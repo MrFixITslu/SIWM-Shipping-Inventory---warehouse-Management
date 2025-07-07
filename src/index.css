@@ -1,0 +1,125 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles from index.html */
+:root {
+  --text-secondary-color: #475569; /* slate-600 */
+  --tooltip-bg-color: #ffffff;
+  --tooltip-border-color: #e2e8f0; /* slate-200 */
+  --tooltip-label-color: #0f172a; /* slate-900 */
+  --tooltip-item-color: #334155; /* slate-700 */
+  --primary-color: #3b82f6; /* blue-500 */
+  --secondary-chart-color: #64748b; /* slate-500 */
+}
+html.dark {
+  --text-secondary-color: #94a3b8; /* slate-400 */
+  --tooltip-bg-color: #1e293b; /* slate-800 */
+  --tooltip-border-color: #334155; /* slate-700 */
+  --tooltip-label-color: #f1f5f9; /* slate-100 */
+  --tooltip-item-color: #cbd5e1; /* slate-300 */
+  --primary-color: #60a5fa; /* blue-400 */
+  --secondary-chart-color: #94a3b8; /* slate-400 */
+}
+body {
+    font-family: 'Inter', sans-serif;
+}
+#root {
+    height: 100%;
+}
+
+/* Keyframes for Login Page Background Animations */
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+  50% { transform: translateY(-25px) rotate(15deg); opacity: 0.35; }
+  100% { transform: translateY(0px) rotate(0deg); opacity: 0.2; }
+}
+@keyframes floatReverse {
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0.25; }
+  50% { transform: translateY(20px) rotate(-10deg); opacity: 0.15; }
+  100% { transform: translateY(0px) rotate(0deg); opacity: 0.25; }
+}
+@keyframes pulse {
+  0% { opacity: 0.1; transform: scale(0.95); }
+  50% { opacity: 0.25; transform: scale(1.05); }
+  100% { opacity: 0.1; transform: scale(0.95); }
+}
+
+/* Classes for Login Background Shapes */
+.animated-bg-shape {
+  position: absolute;
+  z-index: 1;
+  transition: background-color 0.3s ease-in-out;
+}
+.shape-1 {
+  @apply bg-primary-200 dark:bg-primary-900 rounded-full;
+  width: clamp(250px, 40vw, 400px);
+  height: clamp(250px, 40vw, 400px);
+  top: -15%;
+  left: -10%;
+  animation: float 10s ease-in-out infinite;
+}
+.shape-2 {
+  @apply bg-blue-200 dark:bg-blue-900/70 rounded-full;
+  width: clamp(300px, 50vw, 500px);
+  height: clamp(300px, 50vw, 500px);
+  bottom: -20%;
+  right: -15%;
+  animation: floatReverse 14s ease-in-out infinite;
+}
+.shape-3 {
+  @apply bg-teal-100 dark:bg-teal-900/50 rounded-2xl;
+  width: clamp(150px, 20vw, 250px);
+  height: clamp(150px, 20vw, 250px);
+  top: 15%;
+  right: 10%;
+  transform: rotate(25deg);
+  animation: pulse 12s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* Keyframes for Chatbot blinking cursor */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.blinking-cursor::after {
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  @apply text-primary-500 ml-1;
+}
+
+/* Keyframes for Modal appearance */
+@keyframes modal-appear {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-modal-appear {
+  animation: modal-appear 0.3s forwards;
+}
+
+/* Keyframes for real-time row highlight */
+@keyframes row-highlight-anim {
+  from {
+    background-color: #dbeafe; /* blue-100 */
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.dark @keyframes row-highlight-anim {
+  from {
+    background-color: #1e3a8a; /* blue-900 */
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.animate-row-highlight {
+  animation: row-highlight-anim 2s ease-out;
+}

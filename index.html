@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vision79 SIWM</title>
+  
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Comprehensive inventory and warehouse management system for Vision79" />
+  <meta name="theme-color" content="#3b82f6" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Vision79 SIWM" />
+  <meta name="msapplication-TileColor" content="#3b82f6" />
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json" />
+  
+  <!-- PWA Icons -->
+  <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+  <link rel="apple-touch-icon" href="/icons/icon.svg" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script>
+    // Dark mode FOUC prevention
+    (function () {
+      try {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {
+        console.error("Could not set dark mode:", e);
+      }
+    })();
+  </script>
+</head>
+<body class="h-full bg-secondary-100 dark:bg-secondary-900">
+  <div id="root">
+    <div style="padding: 2.5rem; font-family: system-ui, sans-serif; color: #334155;">
+      <h1 style="font-size: 1.875rem; font-weight: 700; color: #2563eb;">Loading Vision79 SIWM...</h1>
+      <p style="margin-top: 0.5rem;">If this message doesn't disappear in a few seconds, please ensure the development servers are running.</p>
+      <p style="margin-top: 1rem; font-style: italic;">
+        For complete setup and run instructions, please see the <strong>README.md</strong> file in the project root.
+      </p>
+    </div>
+  </div>
+
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+</html>
