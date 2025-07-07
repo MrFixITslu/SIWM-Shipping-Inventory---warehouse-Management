@@ -28,3 +28,4 @@ dist-ssr
 backend\.env.production 
 backend/.env.production
 production-secrets.txt
+.env
