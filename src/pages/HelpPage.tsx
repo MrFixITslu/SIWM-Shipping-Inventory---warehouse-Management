@@ -1,4 +1,3 @@
-
 import React from 'react';
 import PageContainer from '@/components/PageContainer';
 import { APP_NAME } from '@/constants';
@@ -71,14 +70,15 @@ const HelpPage: React.FC = () => {
             This is the final step for an incoming shipment, performed by a <span className={roleClass}>Warehouse</span> user once the physical goods arrive.
         </p>
         <ol className={listClass}>
-            <li>In the shipment's detail view, once payment is confirmed, click the <strong className={stepClass}>"Process Items"</strong> button.</li>
-            <li>A "Process Items" modal will open, listing all expected items from the shipment.</li>
+            <li>In the shipment's detail view, once payment is confirmed, click the <strong className={stepClass}>"Receive Items"</strong> button.</li>
+            <li>A "Receive Items" modal will open, listing all expected items from the shipment.</li>
             <li>For each non-serialized item, enter the <strong className={stepClass}>actual quantity</strong> you have received.</li>
             <li>For serialized items, scan or type each individual <strong className={stepClass}>serial number</strong> into the text area. The received quantity will update automatically.</li>
-            <li>Once all items are counted, click <strong className={stepClass}>"Process Items"</strong> to add them to inventory.</li>
-            <li>The system will automatically update inventory levels. If there are any discrepancies between expected and received amounts, the shipment status will be set to <code className={codeBlockClass}>Processing</code> and a notification will be generated for a manager to review. If everything matches, the status will be set to <code className={codeBlockClass}>Processing</code>.</li>
-            <li>For shipments in <code className={codeBlockClass}>Processing</code> status, click the <strong className={stepClass}>"Confirm Received"</strong> button to review the processed items and complete the receive process.</li>
-            <li>In the confirmation modal, you can optionally send a notification and then click <strong className={stepClass}>"Complete Receive"</strong> to finalize the transaction and update all logs.</li>
+            <li>Once all items are counted, click <strong className={stepClass}>"Complete Receiving"</strong> to add them to inventory.</li>
+            <li>The system will automatically update inventory levels. If there are any discrepancies between expected and received amounts, the shipment status will be set to <code className={codeBlockClass}>Processing</code> and a notification will be generated for review. If everything matches, the status will be set to <code className={codeBlockClass}>Arrived</code>.</li>
+            <li>For shipments in <code className={codeBlockClass}>Processing</code> status (indicating discrepancies), click the <strong className={stepClass}>"Review & Confirm"</strong> button to review the processed items and resolve any issues.</li>
+            <li>In the review modal, you can optionally send a notification and then click <strong className={stepClass}>"Confirm Complete"</strong> to finalize the transaction and update all logs.</li>
+            <li>Once the shipment is marked as <code className={codeBlockClass}>Arrived</code>, warehouse users can optionally click <strong className={stepClass}>"Mark as Processed"</strong> to indicate the shipment is fully complete.</li>
         </ol>
 
         {/* Inventory Management Module */}

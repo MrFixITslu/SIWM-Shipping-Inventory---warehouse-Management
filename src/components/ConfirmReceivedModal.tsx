@@ -85,7 +85,7 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
   if (!shipment) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Confirm Received - Shipment #${shipment.id}`} size="2xl">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Review & Confirm - Shipment #${shipment.id}`} size="2xl">
       <div className="space-y-4">
         {error && (
           <div className="p-3 bg-red-100 text-red-700 rounded-md dark:bg-red-800/30 dark:text-red-300 text-sm">
@@ -95,10 +95,10 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
         
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">
-            Shipment Processing Complete
+            Review Shipment Processing
           </h3>
           <p className="text-blue-700 dark:text-blue-300 text-sm">
-            All items have been processed and added to inventory. Review the items below and confirm the receive process.
+            All items have been processed and added to inventory. Review the items below and confirm the receive process. You can optionally send a notification to stakeholders.
           </p>
         </div>
 
@@ -192,7 +192,7 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
             </button>
             
             <button
-              onClick={() => navigate(`/inventory?asnId=${shipment?.id}`)}
+              onClick={handleCompleteReceive}
               disabled={isLoading}
               className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
             >
@@ -204,7 +204,7 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
               ) : (
                 <div className="flex items-center">
                   <CheckBadgeIcon className="w-4 h-4 mr-2" />
-                  Complete Receive
+                  Confirm Complete
                 </div>
               )}
             </button>

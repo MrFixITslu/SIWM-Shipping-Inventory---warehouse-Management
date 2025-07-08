@@ -43,4 +43,9 @@ export const asnService = {
   receiveShipment: (id: number, receivedItems: ReceivedItem[]): Promise<ASN> => {
     return api.post(`/asns/${id}/receive`, { receivedItems });
   },
+
+  completeShipment: async (asnId: number) => {
+    const response = await api.post<ASN>(`/asns/${asnId}/complete`, {});
+    return response;
+  },
 };

@@ -1,8 +1,3 @@
-
-
-
-
-
 // backend/controllers/asnController.js
 const asnService = require('../services/asnService');
 const multer = require('multer');
@@ -168,4 +163,21 @@ const receiveShipment = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
-module.exports = { getASNs, getASNById, createASN, updateASN, deleteASN, submitFees, approveFees, confirmPayment, receiveShipment };
+// Complete Shipment Controller
+const completeShipment = async (req, res, next) => {
+    const asnId = parseInt(req.params.id, 10);
+    if (isNaN(asnId)) {
+        res.status(400); return next(new Error('Invalid ASN ID format. ID must be a number.'));
+    }
+    // Role check: Only Warehouse, Manager, Admin
+    const allowedRoles = ['Warehouse', 'Manager', 'Admin'];
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+        res.status(403); return next(new Error('You do not have permission to complete shipments.'));
+    }
+    try {
+        const updatedASN = await asnService.completeShipment(asnId, req.user.id);
+        res.json(updatedASN);
+    } catch (error) { next(error); }
+};
+
+module.exports = { getASNs, getASNById, createASN, updateASN, deleteASN, submitFees, approveFees, confirmPayment, receiveShipment, completeShipment };

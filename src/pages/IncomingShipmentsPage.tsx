@@ -21,9 +21,6 @@ import { userService } from '@/services/userService';
 import { aiInsightService } from '@/services/aiInsightService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { useAuth } from '@/hooks/useAuth';
-import { useInventory } from '@/hooks/useInventory';
-import { geminiService } from '@/services/geminiService';
-import { useDarkMode } from '@/hooks/useDarkMode';
 
 const TAILWIND_INPUT_CLASSES = "shadow-sm appearance-none border border-secondary-300 bg-white text-secondary-900 rounded-md px-3 py-2 dark:border-secondary-600 dark:bg-secondary-700 dark:text-secondary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm";
 const departmentOptions = ["Digicel+", "Digicel Business", "Commercial", "Marketing", "Outside Plant (OSP)", "Field Force & HVAC"];
@@ -71,11 +68,6 @@ const IncomingShipmentsPage: React.FC = () => {
       setVendors(vendorData);
       setBrokers(brokersData);
 
-      if (selectedAsn) {
-        const updatedSelectedAsn = asnData.find(a => a.id === selectedAsn.id);
-        setSelectedAsn(updatedSelectedAsn || null);
-      }
-
     } catch (err: any) {
       console.error("Failed to fetch page data:", err);
       let userFriendlyError = "An unexpected error occurred while fetching page data. Please try again.";
@@ -92,7 +84,7 @@ const IncomingShipmentsPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedAsn?.id]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -105,6 +97,131 @@ const IncomingShipmentsPage: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on initial mount
+
+  // Handle selectedAsn from URL parameter (when returning from inventory page)
+  useEffect(() => {
+    console.log('=== URL Parameter Handling Effect ===');
+    const selectedAsnId = searchParams.get('selectedAsn');
+    console.log('URL selectedAsnId:', selectedAsnId);
+    console.log('Current asns length:', asns.length);
+    console.log('Current selectedAsn state:', selectedAsn);
+    
+    if (selectedAsnId && asns.length > 0) {
+      const asnId = parseInt(selectedAsnId, 10);
+      console.log('Looking for ASN with ID:', asnId);
+      console.log('Available ASNs:', asns.map(a => ({ id: a.id, poNumber: a.poNumber })));
+      const foundAsn = asns.find(asn => asn.id === asnId);
+      console.log('Found ASN:', foundAsn);
+      
+      if (foundAsn) {
+        // Force refetch of ASN from backend to ensure status is up to date
+        asnService.getASNById(asnId).then(freshAsn => {
+          if (!freshAsn) return;
+          // Check if there are added items from the inventory page
+          const addedItemsParam = searchParams.get('addedItems');
+          if (addedItemsParam) {
+            try {
+              const addedItems = JSON.parse(decodeURIComponent(addedItemsParam));
+              freshAsn.items = addedItems.map((item: any, index: number) => ({
+                id: -index - 1, // Temporary negative IDs for display
+                asnId: freshAsn.id,
+                inventoryItemId: -1,
+                quantity: item.quantity,
+                newSerials: item.serialNumbers || [],
+                itemName: item.name,
+                itemSku: item.sku
+              }));
+            } catch (error) {
+              console.error('Error parsing added items:', error);
+            }
+          }
+          setSelectedAsn(freshAsn);
+        });
+        // Clear the URL parameters to avoid re-triggering on page refresh
+        const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.delete('selectedAsn');
+        newSearchParams.delete('addedItems');
+        window.history.replaceState({}, '', `${window.location.pathname}?${newSearchParams.toString()}`);
+      } else {
+        console.log('ASN not found in current asns list');
+      }
+    } else if (selectedAsnId && asns.length === 0) {
+      // If we have a selectedAsnId but no ASNs loaded yet, wait a bit and try again
+      console.log('ASNs not loaded yet, will retry...');
+      const timer = setTimeout(() => {
+        const retrySelectedAsnId = searchParams.get('selectedAsn');
+        if (retrySelectedAsnId && asns.length > 0) {
+          console.log('Retrying to find ASN with ID:', retrySelectedAsnId);
+          const asnId = parseInt(retrySelectedAsnId, 10);
+          const foundAsn = asns.find(asn => asn.id === asnId);
+          if (foundAsn) {
+            console.log('Found ASN on retry:', foundAsn);
+            
+            // Check if there are added items from the inventory page
+            const addedItemsParam = searchParams.get('addedItems');
+            if (addedItemsParam) {
+              try {
+                const addedItems = JSON.parse(decodeURIComponent(addedItemsParam));
+                foundAsn.items = addedItems.map((item: any, index: number) => ({
+                  id: -index - 1,
+                  asnId: foundAsn.id,
+                  inventoryItemId: -1,
+                  quantity: item.quantity,
+                  newSerials: item.serialNumbers || [],
+                  itemName: item.name,
+                  itemSku: item.sku
+                }));
+              } catch (error) {
+                console.error('Error parsing added items:', error);
+              }
+            }
+            
+            setSelectedAsn(foundAsn);
+            
+            // Clear the URL parameters
+            const newSearchParams = new URLSearchParams(searchParams);
+            newSearchParams.delete('selectedAsn');
+            newSearchParams.delete('addedItems');
+            window.history.replaceState({}, '', `${window.location.pathname}?${newSearchParams.toString()}`);
+          }
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      console.log('No selectedAsnId or asns not loaded yet');
+    }
+    console.log('=== End URL Parameter Handling Effect ===');
+  }, [asns, searchParams]);
+
+  // Update selectedAsn when ASNs data changes (for real-time updates)
+  useEffect(() => {
+    console.log('=== ASN Update Effect ===');
+    console.log('selectedAsn:', selectedAsn);
+    console.log('asns length:', asns.length);
+    
+    if (selectedAsn && asns.length > 0) {
+      const updatedSelectedAsn = asns.find(a => a.id === selectedAsn.id);
+      console.log('updatedSelectedAsn:', updatedSelectedAsn);
+      if (updatedSelectedAsn && updatedSelectedAsn !== selectedAsn) {
+        // Preserve any items that were added from URL parameters
+        if (selectedAsn.items && selectedAsn.items.length > 0) {
+          updatedSelectedAsn.items = selectedAsn.items;
+        }
+        console.log('Setting updated selectedAsn:', updatedSelectedAsn);
+        setSelectedAsn(updatedSelectedAsn);
+      }
+    }
+    console.log('=== End ASN Update Effect ===');
+  }, [asns, selectedAsn]);
+
+  // Debug render cycle
+  useEffect(() => {
+    console.log('=== RENDER CYCLE ===');
+    console.log('selectedAsn in render:', selectedAsn);
+    console.log('selectedAsn === null:', selectedAsn === null);
+    console.log('selectedAsn === undefined:', selectedAsn === undefined);
+    console.log('Boolean(selectedAsn):', Boolean(selectedAsn));
+  });
 
   // --- Real-time updates ---
     const handleRealtimeUpdate = useCallback((updatedAsn: ASN) => {
@@ -249,6 +366,7 @@ const IncomingShipmentsPage: React.FC = () => {
       'Arrived': 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
       'Processing': 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-200',
       'Processed': 'bg-teal-100 text-teal-800 dark:bg-teal-700 dark:text-teal-200',
+      'Added to Stock': 'bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100',
     };
     const label = status === 'Arrived' ? 'In Warehouse' : status;
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status]}`}>{label}</span>;
@@ -319,6 +437,26 @@ const IncomingShipmentsPage: React.FC = () => {
     }
   };
   
+  // Handler to complete shipment
+  const handleCompleteShipment = async (asn: ASN) => {
+    setError(null);
+    setIsSaving(true);
+    try {
+      await asnService.completeShipment(asn.id);
+      // Real-time update will update the list
+      setSelectedAsn(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to complete shipment.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Filter for completed shipments (Added to Stock within 60 days)
+  const now = new Date();
+  const completedShipments = asns.filter(asn => asn.status === 'Added to Stock' && asn.completedAt && (now.getTime() - new Date(asn.completedAt).getTime()) < 60 * 24 * 60 * 60 * 1000);
+  const activeAsns = filteredAsns.filter(asn => asn.status !== 'Added to Stock' || !asn.completedAt || (now.getTime() - new Date(asn.completedAt).getTime()) >= 60 * 24 * 60 * 60 * 1000);
+
   if (isLoading && asns.length === 0) {
     return (
       <PageContainer title="Incoming Shipments">
@@ -334,16 +472,19 @@ const IncomingShipmentsPage: React.FC = () => {
     <PageContainer
       title="Incoming Shipments (ASNs)"
       actions={
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Add Incoming Shipment
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md"
+          >
+            <PlusIcon className="h-5 w-5 mr-2" />
+            Add Incoming Shipment
+          </button>
+        </div>
       }
     >
       <ErrorMessage message={error} />
+      
       <div className="mb-4">
         <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -371,7 +512,7 @@ const IncomingShipmentsPage: React.FC = () => {
             {!isLoading && filteredAsns.length > 0 && (
                 <Table<ASN>
                 columns={columns}
-                data={filteredAsns}
+                data={activeAsns}
                 onRowClick={(asn) => setSelectedAsn(asn)}
                 actions={tableActions}
                 rowClassName={(item) => highlightedRow === item.id ? 'animate-row-highlight' : ''}
@@ -379,7 +520,7 @@ const IncomingShipmentsPage: React.FC = () => {
             )}
         </div>
         
-        {selectedAsn && (
+        {selectedAsn && selectedAsn.id ? (
             <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-lg p-6">
                 <ASNDetailView
                     asn={selectedAsn}
@@ -391,6 +532,7 @@ const IncomingShipmentsPage: React.FC = () => {
                     onConfirmArrival={handleOpenReceivingModal}
                     onConfirmProcessed={handleConfirmProcessed}
                     onConfirmReceived={handleOpenConfirmReceivedModal}
+                    onCompleteShipment={handleCompleteShipment}
                 />
                 
                 <div className="mt-6 bg-secondary-50 dark:bg-secondary-700 p-4 rounded-xl">
@@ -406,6 +548,10 @@ const IncomingShipmentsPage: React.FC = () => {
                         <p className="text-sm text-secondary-700 dark:text-secondary-300">{aiDelayPrediction || "No prediction available."}</p>
                     )}
                 </div>
+            </div>
+        ) : (
+            <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
+                {/* Removed warning message about selectedAsn being null or undefined */}
             </div>
         )}
       </div>
@@ -511,6 +657,19 @@ const IncomingShipmentsPage: React.FC = () => {
         shipment={asnForConfirming}
         onConfirmComplete={fetchData}
       />
+      
+      {completedShipments.length > 0 && (
+        <div className="mt-10">
+          <h3 className="text-lg font-semibold text-teal-700 dark:text-teal-300 mb-4">Completed Shipments (Last 60 Days)</h3>
+          <Table<ASN>
+            columns={columns}
+            data={completedShipments}
+            onRowClick={(asn) => setSelectedAsn(asn)}
+            actions={tableActions}
+            rowClassName={(item) => highlightedRow === item.id ? 'animate-row-highlight' : ''}
+          />
+        </div>
+      )}
       
     </PageContainer>
   );

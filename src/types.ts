@@ -29,7 +29,7 @@ export interface ASN {
   department?: string;
   supplier: string;
   expectedArrival: string;
-  status: 'On Time' | 'Delayed' | 'Arrived' | 'Processing' | 'Processed';
+  status: 'On Time' | 'Delayed' | 'Arrived' | 'Processing' | 'Processed' | 'Added to Stock';
   itemCount: number;
   carrier: string;
   poFileData?: string;
@@ -49,6 +49,7 @@ export interface ASN {
   paymentConfirmationName?: string;
   paymentConfirmationData?: string;
   createdAt?: string;
+  completedAt?: string;
   items?: ASNItem[];
 }
 

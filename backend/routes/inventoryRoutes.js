@@ -16,7 +16,7 @@ const { ALL_ROLES } = require('../config/roles');
 // Base routes for inventory items
 router.route('/')
     .get(protect, authorize(...ALL_ROLES), getInventoryItems)
-    .post(protect, authorize('admin', 'manager'), createInventoryItem);
+    .post(protect, authorize('admin', 'manager', 'Warehouse', 'Technician'), createInventoryItem);
 
 // Specific data routes (e.g., for populating filters)
 router.route('/data/categories')
@@ -24,7 +24,7 @@ router.route('/data/categories')
 
 router.route('/:id')
     .get(protect, authorize(...ALL_ROLES), getInventoryItemById)
-    .put(protect, authorize('admin', 'manager'), updateInventoryItem)
+    .put(protect, authorize('admin', 'manager', 'Warehouse', 'Technician'), updateInventoryItem)
     .delete(protect, authorize('admin'), deleteInventoryItem);
 
 // Route for managing serial numbers of a specific item

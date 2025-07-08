@@ -15,6 +15,7 @@ import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, SerialIcon, ArrowLeftOnRect
 import { inventoryService } from '@/services/inventoryService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { debounce } from '@/utils/performance';
+import { asnService } from '@/services/asnService';
 
 const TAILWIND_INPUT_CLASSES = "shadow-sm appearance-none border border-secondary-300 bg-white text-secondary-900 rounded-md px-3 py-2 dark:border-secondary-600 dark:bg-secondary-700 dark:text-secondary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm";
 
@@ -43,11 +44,43 @@ const InventoryManagementPage: React.FC = () => {
   const [isSerialModalOpen, setIsSerialModalOpen] = useState(false);
   const [selectedItemForSerials, setSelectedItemForSerials] = useState<InventoryItem | null>(null);
   const [showSerialNotification, setShowSerialNotification] = useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [addedItemsForAsn, setAddedItemsForAsn] = useState<Array<{name: string, sku: string, quantity: number, serialNumbers?: string[]}>>([]);
 
   const { isModalOpen: isConfirmDeleteOpen, confirmButtonText, showConfirmation, handleConfirm: handleConfirmDelete, handleClose: handleCloseDeleteConfirm } = useConfirmationModal();
 
-  const handleReturnToShipment = () => {
-    navigate(`/incoming-shipments?selectedAsn=${asnId}`);
+  const handleReturnToShipment = async () => {
+    if (!asnId) return;
+    try {
+      if (addedItemsForAsn.length === 0) {
+        setError('You must add at least one item to receive for this shipment.');
+        return;
+      }
+      // Map addedItemsForAsn to ReceivedItem[]
+      const receivedItems = addedItemsForAsn.map(added => {
+        const inv = inventory.find(i => i.name === added.name && i.sku === added.sku);
+        return {
+          itemId: inv?.id || 0,
+          receivedQuantity: added.quantity,
+          receivedSerials: added.serialNumbers,
+        };
+      });
+      if (receivedItems.some(item => !item.itemId)) {
+        setError('One or more items could not be matched to inventory. Please check item names and SKUs.');
+        return;
+      }
+      await asnService.receiveShipment(Number(asnId), receivedItems);
+      // Include information about added items in the URL
+      const addedItemsParam = addedItemsForAsn.length > 0 ? `&addedItems=${encodeURIComponent(JSON.stringify(addedItemsForAsn))}` : '';
+      const url = `/incoming-shipments?selectedAsn=${asnId}${addedItemsParam}`;
+      console.log('Navigating to URL:', url);
+      console.log('asnId:', asnId);
+      console.log('addedItemsForAsn:', addedItemsForAsn);
+      navigate(url);
+    } catch (err: any) {
+      setError(err.message || 'Failed to mark shipment as received.');
+    }
   };
 
   // Debounced search to improve performance
@@ -67,11 +100,30 @@ const InventoryManagementPage: React.FC = () => {
   useEffect(() => {
     if (lastUpdatedId) {
       setHighlightedRow(lastUpdatedId.id);
+      
+      // Show success notification
+      const message = lastUpdatedId.type === 'create' 
+        ? 'Item added successfully!' 
+        : 'Item updated successfully!';
+      setSuccessMessage(message);
+      setShowSuccessNotification(true);
+      
+      // Auto-hide success notification after 3 seconds
+      const successTimer = setTimeout(() => {
+        setShowSuccessNotification(false);
+        setSuccessMessage('');
+      }, 3000);
+      
+      // Clear highlight after 2 seconds
       const timer = setTimeout(() => {
         setHighlightedRow(null);
         clearLastUpdatedId();
       }, 2000);
-      return () => clearTimeout(timer);
+      
+      return () => {
+        clearTimeout(timer);
+        clearTimeout(successTimer);
+      };
     }
   }, [lastUpdatedId, clearLastUpdatedId]);
 
@@ -179,6 +231,7 @@ const InventoryManagementPage: React.FC = () => {
   };
 
   const handleSaveItem = async () => {
+    console.log('handleSaveItem called with currentItem:', currentItem);
     setError(null);
     setIsSaving(true);
     try {
@@ -190,9 +243,12 @@ const InventoryManagementPage: React.FC = () => {
         item.location === currentItem.location
       );
 
+      console.log('Existing item found:', existingItem);
+
       const newQuantity = Number(currentItem.quantity || 0);
       
       if (existingItem && !currentItem.id) {
+        console.log('Adding quantity to existing item');
         // Adding quantity to existing item
         const updatedQuantity = existingItem.isSerialized 
           ? (existingItem.serialNumbers?.length || 0) + newQuantity
@@ -205,57 +261,89 @@ const InventoryManagementPage: React.FC = () => {
           costPrice: Number(currentItem.costPrice || existingItem.costPrice || 0),
         };
 
+        console.log('Updating existing item:', itemToSave);
         await inventoryService.updateInventoryItem(existingItem.id, itemToSave as InventoryItem);
+        // Update or add to addedItemsForAsn
+        if (asnId) {
+          setAddedItemsForAsn(prev => {
+            const idx = prev.findIndex(i => i.name === existingItem.name && i.sku === existingItem.sku);
+            const updated = { name: existingItem.name, sku: existingItem.sku, quantity: updatedQuantity, serialNumbers: existingItem.serialNumbers };
+            if (idx !== -1) {
+              const arr = [...prev];
+              arr[idx] = updated;
+              return arr;
+            } else {
+              return [...prev, updated];
+            }
+          });
+        }
+      } else if (currentItem.isSerialized && !currentItem.id) {
+        console.log('Preparing serialized item for serial number entry');
+        // For new serialized items, prepare for serial number entry
+        const tempItem = {
+          ...currentItem,
+          quantity: 0, // Will be set when serial numbers are added
+          reorderPoint: Number(currentItem.reorderPoint || 0),
+          costPrice: Number(currentItem.costPrice || 0),
+        };
+
+        if (!tempItem.name || !tempItem.sku || !tempItem.category || !tempItem.location) {
+          throw new Error('Name, SKU, Category, and Location are required fields.');
+        }
+
+        // Store the temporary item data for serial management
+        setCurrentItem(tempItem);
+        setSelectedItemForSerials({
+          ...tempItem,
+          id: -1, // Temporary ID
+          serialNumbers: [],
+        } as InventoryItem);
+        setShowSerialNotification(true);
+        setIsSerialModalOpen(true);
+        handleCloseItemModal();
+        return; // Don't save to inventory yet
       } else {
-        // For serialized items, don't add to inventory yet - just prepare for serial number entry
-        if (currentItem.isSerialized && !currentItem.id) {
-          // Store the item data temporarily for serial number entry
-          const tempItem = {
-            ...currentItem,
-            quantity: 0, // Will be set when serial numbers are added
-            reorderPoint: Number(currentItem.reorderPoint || 0),
-            costPrice: Number(currentItem.costPrice || 0),
-          };
+        console.log('Creating new item or updating existing item by ID');
+        // Creating new non-serialized item or updating existing item by ID
+        const itemToSave = {
+          ...currentItem,
+          quantity: newQuantity,
+          reorderPoint: Number(currentItem.reorderPoint || 0),
+          costPrice: Number(currentItem.costPrice || 0),
+        };
 
-          if (!tempItem.name || !tempItem.sku || !tempItem.category || !tempItem.location) {
-            throw new Error('Name, SKU, Category, and Location are required fields.');
-          }
+        if (!itemToSave.name || !itemToSave.sku || !itemToSave.category || !itemToSave.location) {
+          throw new Error('Name, SKU, Category, and Location are required fields.');
+        }
 
-          // Store the temporary item data for serial management
-          setCurrentItem(tempItem);
-          setSelectedItemForSerials({
-            ...tempItem,
-            id: -1, // Temporary ID
-            serialNumbers: [],
-          } as InventoryItem);
-          setShowSerialNotification(true);
-          setIsSerialModalOpen(true);
-          handleCloseItemModal();
-          return; // Don't save to inventory yet
+        console.log('Saving item:', itemToSave);
+
+        if (itemToSave.id) {
+          await inventoryService.updateInventoryItem(itemToSave.id, itemToSave as InventoryItem);
         } else {
-          // Creating new non-serialized item or updating existing item by ID
-          const itemToSave = {
-            ...currentItem,
-            quantity: newQuantity,
-            reorderPoint: Number(currentItem.reorderPoint || 0),
-            costPrice: Number(currentItem.costPrice || 0),
-          };
-
-          if (!itemToSave.name || !itemToSave.sku || !itemToSave.category || !itemToSave.location) {
-            throw new Error('Name, SKU, Category, and Location are required fields.');
-          }
-
-          if (itemToSave.id) {
-            await inventoryService.updateInventoryItem(itemToSave.id, itemToSave as InventoryItem);
-          } else {
-            await inventoryService.addInventoryItem(itemToSave as Omit<InventoryItem, 'id'>);
+          const savedItem = await inventoryService.addInventoryItem(itemToSave as Omit<InventoryItem, 'id'>);
+          // Track the added item for this ASN
+          if (asnId) {
+            setAddedItemsForAsn(prev => {
+              const idx = prev.findIndex(i => i.name === savedItem.name && i.sku === savedItem.sku);
+              const updated = { name: savedItem.name, sku: savedItem.sku, quantity: savedItem.quantity, serialNumbers: savedItem.serialNumbers };
+              if (idx !== -1) {
+                const arr = [...prev];
+                arr[idx] = updated;
+                return arr;
+              } else {
+                return [...prev, updated];
+              }
+            });
           }
         }
       }
       
+      console.log('Item saved successfully');
       // No fetchInventory() call needed, context handles the update via SSE
       handleCloseItemModal();
     } catch (err: any) {
+      console.error('Error saving item:', err);
       let userFriendlyError = "An unexpected error occurred.";
       if (err.message) {
           if (err.message.toLowerCase().includes("failed to fetch")) {
@@ -309,7 +397,21 @@ const InventoryManagementPage: React.FC = () => {
           serialNumbers: serials,
         } as Omit<InventoryItem, 'id'>;
 
-        await inventoryService.addInventoryItem(newItem);
+        const savedItem = await inventoryService.addInventoryItem(newItem);
+        // Track the added serialized item for this ASN
+        if (asnId) {
+          setAddedItemsForAsn(prev => {
+            const idx = prev.findIndex(i => i.name === savedItem.name && i.sku === savedItem.sku);
+            const updated = { name: savedItem.name, sku: savedItem.sku, quantity: savedItem.quantity, serialNumbers: savedItem.serialNumbers };
+            if (idx !== -1) {
+              const arr = [...prev];
+              arr[idx] = updated;
+              return arr;
+            } else {
+              return [...prev, updated];
+            }
+          });
+        }
       } else {
         // This is an existing item being updated
         // For existing items, we need to append the new serials to existing ones
@@ -402,8 +504,16 @@ const InventoryManagementPage: React.FC = () => {
                   Processing Shipment #{asnId}
                 </h3>
                 <p className="text-sm text-blue-600 dark:text-blue-300">
-                  Add items to inventory for this shipment. When finished, return to complete the receiving process.
+                  {addedItemsForAsn.length > 0 
+                    ? `${addedItemsForAsn.length} item(s) added to inventory. Continue adding items or return to complete the receiving process.`
+                    : 'Add items to inventory for this shipment. When finished, return to complete the receiving process.'
+                  }
                 </p>
+                {addedItemsForAsn.length > 0 && (
+                  <div className="mt-2 text-xs text-blue-600 dark:text-blue-300">
+                    <strong>Added items:</strong> {addedItemsForAsn.map(item => `${item.name} (${item.quantity})`).join(', ')}
+                  </div>
+                )}
               </div>
             </div>
             <button
@@ -414,6 +524,21 @@ const InventoryManagementPage: React.FC = () => {
               Return to Shipment
             </button>
           </div>
+        </div>
+      )}
+      {asnId && addedItemsForAsn.length > 0 && (
+        <div className="my-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <h4 className="font-semibold text-blue-700 dark:text-blue-200 mb-2">Items to be Received for this Shipment:</h4>
+          <ul className="list-disc pl-6">
+            {addedItemsForAsn.map((item, idx) => (
+              <li key={idx} className="mb-1">
+                <span className="font-medium">{item.name}</span> (SKU: {item.sku}) — Qty: {item.quantity}
+                {item.serialNumbers && item.serialNumbers.length > 0 && (
+                  <span className="ml-2 text-xs text-blue-600 dark:text-blue-300">Serials: {item.serialNumbers.join(', ')}</span>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       <div className="mb-4">
@@ -434,6 +559,35 @@ const InventoryManagementPage: React.FC = () => {
 
       {error && <ErrorMessage message={error} />}
 
+      {/* Success Notification */}
+      {showSuccessNotification && (
+        <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                {successMessage}
+              </p>
+            </div>
+            <div className="ml-auto pl-3">
+              <button
+                onClick={() => setShowSuccessNotification(false)}
+                className="inline-flex text-green-400 hover:text-green-600 dark:hover:text-green-300"
+              >
+                <span className="sr-only">Close</span>
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Table
         columns={columns}
         data={filteredInventory}
@@ -452,7 +606,7 @@ const InventoryManagementPage: React.FC = () => {
         title={currentItem.id ? 'Edit Item' : 'Add New Item'}
         size="lg"
       >
-        <div className="space-y-4">
+        <form onSubmit={(e) => { e.preventDefault(); handleSaveItem(); }} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <AutocompleteInput
@@ -564,23 +718,24 @@ const InventoryManagementPage: React.FC = () => {
               This item is serialized (tracked by individual serial numbers)
             </label>
           </div>
-        </div>
 
-        <div className="flex justify-end space-x-3 mt-6">
-          <button
-            onClick={handleCloseItemModal}
-            className="px-4 py-2 text-secondary-700 bg-secondary-100 hover:bg-secondary-200 rounded-md transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSaveItem}
-            disabled={isSaving}
-            className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md transition-colors disabled:opacity-50"
-          >
-            {isSaving ? 'Saving...' : 'Add Item'}
-          </button>
-        </div>
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              type="button"
+              onClick={handleCloseItemModal}
+              className="px-4 py-2 text-secondary-700 bg-secondary-100 hover:bg-secondary-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md transition-colors disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Add Item'}
+            </button>
+          </div>
+        </form>
       </Modal>
 
       {/* Serial Management Modal */}

@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/Modal';
 import { ASN, ReceivedItem } from '@/types';
@@ -181,7 +178,7 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Process Items for Shipment #${shipment.id}`} size="2xl" contentRef={modalContentRef}>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Receive Items for Shipment #${shipment.id}`} size="2xl" contentRef={modalContentRef}>
             <div className="space-y-4">
                 {error && <div className="p-3 bg-red-100 text-red-700 rounded-md dark:bg-red-800/30 dark:text-red-300 text-sm">{error}</div>}
                 
@@ -207,51 +204,38 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                                 </p>
                             </div>
                             
-                            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {item.isSerialized ? (
-                                    <div className="md:col-span-2">
-                                        <div className="flex justify-between items-center mb-1">
-                                            <label htmlFor={`serials-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 flex items-center">
-                                                <SerialIcon className="h-4 w-4 mr-1.5 text-blue-500" />
-                                                Received Serial Numbers
-                                            </label>
-                                            <button type="button" onClick={() => fileInputRefs.current[index]?.click()} disabled={itemStatuses[item.itemId]?.isLoading} className="text-xs bg-secondary-100 hover:bg-secondary-200 dark:bg-secondary-700 dark:hover:bg-secondary-600 px-2 py-1 rounded-md flex items-center disabled:opacity-50">
-                                                <UploadIcon className="h-4 w-4 mr-1"/> Upload
-                                            </button>
-                                            <input type="file" ref={el => {fileInputRefs.current[index] = el;}} style={{ display: 'none' }} accept=".csv,.pdf" onChange={(e) => handleFileSelect(e, index)} />
-                                        </div>
-                                        <textarea
-                                            id={`serials-${item.itemId}`}
-                                            rows={3}
-                                            value={item.receivedSerials}
-                                            onChange={(e) => handleItemChange(index, 'receivedSerials', e.target.value)}
-                                            className={`mt-1 block w-full ${TAILWIND_INPUT_CLASSES}`}
-                                            placeholder="Scan or type serials, separated by comma or new line"
-                                        />
-                                        {itemStatuses[item.itemId]?.isLoading && <div className="flex items-center mt-1"><LoadingSpinner className="h-4 w-4 mr-2" /><span className="text-xs text-secondary-500">Processing file...</span></div>}
-                                        {itemStatuses[item.itemId]?.error && <p className="text-xs text-red-500 mt-1">{itemStatuses[item.itemId].error}</p>}
-                                        <p className="text-xs text-secondary-500 mt-1">Received quantity will be automatically updated based on the number of serials entered.</p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <label htmlFor={`quantity-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Received Quantity</label>
-                                        <input
-                                            type="number"
-                                            id={`quantity-${item.itemId}`}
-                                            value={item.receivedQuantity}
-                                            onChange={(e) => handleItemChange(index, 'receivedQuantity', e.target.value)}
-                                            min="0"
-                                            className={`mt-1 block w-full ${TAILWIND_INPUT_CLASSES}`}
-                                        />
-                                    </div>
-                                )}
-                                <div className={`flex items-end ${!item.isSerialized ? '' : 'md:col-start-2'}`}>
-                                    <div className="w-full">
-                                        <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Counted</label>
-                                        <input type="number" value={item.receivedQuantity} readOnly disabled className={`mt-1 block w-full bg-secondary-100 dark:bg-secondary-800 ${TAILWIND_INPUT_CLASSES}`} />
-                                    </div>
+                            {item.isSerialized ? (
+                                <div className="mt-3">
+                                    <label htmlFor={`serials-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                                        Serial Numbers ({item.receivedQuantity} received)
+                                    </label>
+                                    <textarea
+                                        id={`serials-${item.itemId}`}
+                                        rows={3}
+                                        value={item.receivedSerials}
+                                        onChange={(e) => handleItemChange(index, 'receivedSerials', e.target.value)}
+                                        className={`mt-1 block w-full ${TAILWIND_INPUT_CLASSES}`}
+                                        placeholder="Scan or type serials, separated by comma or new line"
+                                    />
+                                    {itemStatuses[item.itemId]?.isLoading && <div className="flex items-center mt-1"><LoadingSpinner className="h-4 w-4 mr-2" /><span className="text-xs text-secondary-500">Processing file...</span></div>}
+                                    {itemStatuses[item.itemId]?.error && <p className="text-xs text-red-500 mt-1">{itemStatuses[item.itemId].error}</p>}
+                                    <p className="text-xs text-secondary-500 mt-1">Received quantity will be automatically updated based on the number of serials entered.</p>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="mt-3">
+                                    <label htmlFor={`quantity-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                                        Received Quantity
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id={`quantity-${item.itemId}`}
+                                        value={item.receivedQuantity}
+                                        onChange={(e) => handleItemChange(index, 'receivedQuantity', e.target.value)}
+                                        min="0"
+                                        className={`mt-1 block w-full ${TAILWIND_INPUT_CLASSES}`}
+                                    />
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -267,7 +251,7 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                         disabled={isSaving || isLoadingDetails}
                     >
                         {isSaving ? <LoadingSpinner className="w-5 h-5 mr-2" /> : null}
-                        {isSaving ? 'Processing...' : 'Process Items'}
+                        {isSaving ? 'Processing...' : 'Complete Receiving'}
                     </button>
                 </div>
             </div>

@@ -13,9 +13,10 @@ interface ASNDetailViewProps {
   onConfirmArrival: (asn: ASN) => void;
   onConfirmProcessed?: (asn: ASN) => void;
   onConfirmReceived?: (asn: ASN) => void;
+  onCompleteShipment?: (asn: ASN) => void;
 }
 
-const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnterFees, onApproveFees, onConfirmPayment, onConfirmArrival, onConfirmProcessed, onConfirmReceived }) => {
+const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnterFees, onApproveFees, onConfirmPayment, onConfirmArrival, onConfirmProcessed, onConfirmReceived, onCompleteShipment }) => {
     const navigate = useNavigate();
     
     const getFeeStatusBadge = (status?: FeeStatus) => {
@@ -35,6 +36,22 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
     const WorkflowActions: React.FC = () => {
         const commonButtonClasses = "w-full flex items-center justify-center font-semibold px-4 py-2 rounded-lg shadow-md text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
         const helperTextClasses = "text-xs text-secondary-500 dark:text-secondary-400 text-center mt-1";
+
+        // New: Complete Shipment logic
+        const canCompleteShipment = user && ['Warehouse', 'admin', 'manager', 'Manager', 'Admin', 'Warehouse'].includes(user.role) && asn.items && asn.items.length > 0 && (asn.status === 'Arrived' || asn.status === 'Processing');
+        if (asn.status === 'Added to Stock') {
+            return <p className="text-xs text-center text-teal-600 dark:text-teal-400 font-semibold">✅ Shipment completed and added to stock.</p>;
+        }
+        if (canCompleteShipment && onCompleteShipment) {
+            return (
+                <button
+                    onClick={() => onCompleteShipment(asn)}
+                    className={`${commonButtonClasses} bg-teal-600 hover:bg-teal-700 text-white`}
+                >
+                    <CheckBadgeIcon className="h-5 w-5 mr-2" /> Complete Shipment
+                </button>
+            );
+        }
 
         switch (asn.feeStatus) {
             case FeeStatus.PendingSubmission:
@@ -99,24 +116,53 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                 );
                 
             case FeeStatus.PaymentConfirmed:
+                // If status is Processing, it means there were discrepancies that need review
                 if (asn.status === 'Processing') {
                     const canWarehouseConfirm = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
                     return (
                         <div>
+                            <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md">
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                                    ⚠️ Discrepancies found during receiving. Review and confirm items.
+                                </p>
+                            </div>
                             <button
                                 onClick={() => onConfirmReceived?.(asn)}
                                 disabled={!canWarehouseConfirm}
-                                className={`${commonButtonClasses} bg-green-500 hover:bg-green-600 text-white`}
+                                className={`${commonButtonClasses} bg-orange-500 hover:bg-orange-600 text-white`}
                             >
-                                <ShipmentIcon className="h-5 w-5 mr-2" /> Confirm Received
+                                <ShipmentIcon className="h-5 w-5 mr-2" /> Review & Confirm
                             </button>
-                            {!canWarehouseConfirm && <p className={helperTextClasses}>Waiting for Warehouse team to confirm received items.</p>}
+                            {!canWarehouseConfirm && <p className={helperTextClasses}>Waiting for Warehouse team to review discrepancies.</p>}
                         </div>
                     );
                 }
+                
+                // If status is Arrived, shipment is complete
                 if (asn.status === 'Arrived') {
-                    return <p className="text-xs text-center text-green-600 dark:text-green-400">Shipment has been received and processed.</p>;
+                    return (
+                        <div>
+                            <p className="text-xs text-center text-green-600 dark:text-green-400 mb-2">
+                                ✅ Shipment received and processed successfully
+                            </p>
+                            {user?.role === 'Warehouse' && onConfirmProcessed && (
+                                <button
+                                    onClick={() => onConfirmProcessed(asn)}
+                                    className={`${commonButtonClasses} bg-teal-500 hover:bg-teal-600 text-white`}
+                                >
+                                    <CheckBadgeIcon className="h-5 w-5 mr-2" /> Mark as Processed
+                                </button>
+                            )}
+                        </div>
+                    );
                 }
+                
+                // If status is Processed, shipment is fully complete
+                if (asn.status === 'Processed') {
+                    return <p className="text-xs text-center text-green-600 dark:text-green-400">✅ Shipment fully processed and complete.</p>;
+                }
+                
+                // Default: Payment confirmed, ready to receive
                 const canWarehouseReceive = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
                 return (
                      <div>
@@ -125,9 +171,9 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                             disabled={!canWarehouseReceive}
                             className={`${commonButtonClasses} bg-blue-500 hover:bg-blue-600 text-white`}
                         >
-                            <ShipmentIcon className="h-5 w-5 mr-2" /> Process Items
+                            <ShipmentIcon className="h-5 w-5 mr-2" /> Receive Items
                         </button>
-                        {!canWarehouseReceive && <p className={helperTextClasses}>Cleared for arrival. Waiting for Warehouse team to process items.</p>}
+                        {!canWarehouseReceive && <p className={helperTextClasses}>Cleared for receiving. Waiting for Warehouse team to process items.</p>}
                     </div>
                 );
 
@@ -184,17 +230,58 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                 <div className="space-y-3">
                     <h4 className="font-semibold text-secondary-700 dark:text-secondary-300">Next Step</h4>
                     <WorkflowActions />
-                    {/* Confirm Processed button for warehouse team */}
-                    {asn.status === 'Arrived' && user?.role === 'Warehouse' && onConfirmProcessed && (
-                      <button
-                        onClick={() => onConfirmProcessed(asn)}
-                        className="w-full mt-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md shadow-sm font-medium"
-                      >
-                        Confirm Processed
-                      </button>
-                    )}
                 </div>
             </div>
+
+            {/* Received Items Section - Show when items have been added to inventory */}
+            {asn.items && asn.items.length > 0 && (
+                <div className="mt-6 border-t border-secondary-200 dark:border-secondary-700 pt-4">
+                    <h4 className="font-semibold text-secondary-700 dark:text-secondary-300 mb-3">
+                        📦 Items Received & Added to Inventory
+                    </h4>
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {asn.items.map((item, index) => (
+                                <div key={index} className="bg-white dark:bg-secondary-700 rounded-md p-3 border border-green-200 dark:border-green-600">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h5 className="font-medium text-secondary-900 dark:text-secondary-100 text-sm">
+                                            {item.itemName || `Item ${index + 1}`}
+                                        </h5>
+                                        <span className="text-xs bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200 px-2 py-1 rounded-full">
+                                            {item.quantity} received
+                                        </span>
+                                    </div>
+                                    {item.itemSku && (
+                                        <p className="text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                                            SKU: {item.itemSku}
+                                        </p>
+                                    )}
+                                    {item.newSerials && item.newSerials.length > 0 && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-secondary-600 dark:text-secondary-400 mb-1">
+                                                Serial Numbers:
+                                            </p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {item.newSerials.map((serial, serialIndex) => (
+                                                    <span 
+                                                        key={serialIndex}
+                                                        className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200 px-2 py-1 rounded"
+                                                    >
+                                                        {serial}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 text-sm text-green-700 dark:text-green-300">
+                            ✅ All items have been successfully added to inventory and are now available for use.
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

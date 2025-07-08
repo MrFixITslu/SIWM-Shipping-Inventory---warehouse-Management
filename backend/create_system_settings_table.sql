@@ -45,4 +45,8 @@ END $$;
 -- Update existing inventory items to have default safety stock if they don't have any
 UPDATE inventory_items 
 SET safety_stock = GREATEST(reorder_point * 0.2, 10) 
-WHERE safety_stock IS NULL OR safety_stock = 0; 
+WHERE safety_stock IS NULL OR safety_stock = 0;
+
+-- Add completed_at column to asns table for shipment completion tracking
+ALTER TABLE asns
+ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP NULL; 
