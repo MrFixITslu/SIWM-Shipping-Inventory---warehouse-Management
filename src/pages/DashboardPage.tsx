@@ -5,6 +5,8 @@ import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { useAuth } from '@/contexts/AuthContext';
 import { dashboardService } from '@/services/dashboardService';
 import { asnService } from '@/services/asnService';
+import { inventoryService } from '@/services/inventoryService';
+import { aiInsightService } from '@/services/aiInsightService';
 import Table from '@/components/Table';
 import { 
   ShipmentIcon, 
@@ -214,32 +216,55 @@ const StockAnalysis: React.FC<{
       ) : (
         <div className="space-y-3 max-h-64 overflow-y-auto">
           {itemsAtRiskOfStockOut.slice(0, 8).map((item, index) => {
-            const riskLevel = item.riskLevel || item.stockStatus || 'Medium';
-            const daysUntilStockOut = item.daysUntilStockOut || 7;
+            // Map StockOutRiskForecastItem fields to display fields
+            const itemName = item.itemName || item.name;
+            const itemSku = item.sku;
+            const currentStock = item.currentStock || item.quantity || item.currentQuantity;
+            const daysUntilStockOut = item.predictedStockOutDays || item.daysUntilStockOut || 7;
+            const confidence = item.confidence || 0;
+            
+            // Determine risk level based on confidence and days until stock out
+            let riskLevel = 'Medium';
+            if (daysUntilStockOut <= 3 || confidence >= 0.8) {
+              riskLevel = 'Critical';
+            } else if (daysUntilStockOut <= 7 || confidence >= 0.6) {
+              riskLevel = 'High';
+            } else if (daysUntilStockOut <= 14) {
+              riskLevel = 'Medium';
+            } else {
+              riskLevel = 'Low';
+            }
             
             return (
               <div key={index} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100 truncate">
-                      {item.name || item.itemName}
+                      {itemName}
                     </p>
                     <span className={`text-xs font-medium px-2 py-1 rounded ${
                       riskLevel === 'Critical' 
                         ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/50'
+                        : riskLevel === 'High'
+                        ? 'text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/50'
                         : 'text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50'
                     }`}>
                       {riskLevel}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-secondary-500 dark:text-secondary-400">
-                    <span>SKU: {item.sku}</span>
+                    <span>SKU: {itemSku}</span>
                     <span>{item.category || 'N/A'}</span>
                   </div>
                   <div className="flex items-center justify-between text-xs text-secondary-500 dark:text-secondary-400 mt-1">
-                    <span>Qty: {item.quantity || item.currentQuantity}</span>
+                    <span>Qty: {currentStock}</span>
                     <span>{daysUntilStockOut} days left</span>
                   </div>
+                  {item.recommendedReorderQty && (
+                    <div className="text-xs text-secondary-400 dark:text-secondary-500 mt-1">
+                      📦 Recommended reorder: {item.recommendedReorderQty} units
+                    </div>
+                  )}
                   {item.location && (
                     <div className="text-xs text-secondary-400 dark:text-secondary-500 mt-1">
                       📍 {item.location}
@@ -320,7 +345,7 @@ const ASNStatusSummary: React.FC<{ asnData: any }> = ({ asnData }) => (
 
 // Stock Value by Department Table Component
 const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ stockData, loading }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const columns = [
     { key: 'department', header: 'Department', sortable: true },
@@ -408,7 +433,7 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
 
 // Aged Inventory Table Component
 const AgedInventoryTable: React.FC<{ agedData: any[]; loading: boolean }> = ({ agedData, loading }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const columns: any[] = [
     { key: 'name', header: 'Item Name', sortable: true },
@@ -749,6 +774,7 @@ const DashboardPage: React.FC = () => {
   const [agedInventoryData, setAgedInventoryData] = useState<any[]>([]);
   const [itemsBelowReorderPoint, setItemsBelowReorderPoint] = useState<any[]>([]);
   const [itemsAtRiskOfStockOut, setItemsAtRiskOfStockOut] = useState<any[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [offlineStatus, setOfflineStatus] = useState({ isOnline: true, lastSyncTime: undefined });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -759,7 +785,7 @@ const DashboardPage: React.FC = () => {
       setIsRefreshing(true);
       setError(null);
 
-      // Load all dashboard data in parallel
+      // Load all dashboard data in parallel, but fetch inventory items separately
       const [
         metricsData, 
         workflowData, 
@@ -768,7 +794,8 @@ const DashboardPage: React.FC = () => {
         stockValueData, 
         agedInventoryData,
         itemsBelowReorderPointData,
-        itemsAtRiskOfStockOutData
+        stockOutForecastData,
+        inventoryItemsData
       ] = await Promise.all([
         dashboardService.getDashboardMetrics(),
         dashboardService.getWorkflowMetrics(),
@@ -777,12 +804,14 @@ const DashboardPage: React.FC = () => {
         dashboardService.getStockValueByDepartment(),
         dashboardService.getAgedInventory(),
         dashboardService.getItemsBelowReorderPoint(),
-        dashboardService.getItemsAtRiskOfStockOut()
+        aiInsightService.getStockOutForecast(),
+        inventoryService.getInventoryItems()
       ]);
 
       setMetrics(metricsData);
       setWorkflowMetrics(workflowData);
       setOfflineStatus(offlineData);
+      setInventoryItems(Array.isArray(inventoryItemsData) ? inventoryItemsData : []);
       
       // Log the stock value by department API response for debugging
       console.log('Stock Value by Department API response:', stockValueData);
@@ -792,7 +821,7 @@ const DashboardPage: React.FC = () => {
       setStockValueData(Array.isArray(stockValueData) ? stockValueData : (stockValueData as any)?.departments || []);
       setAgedInventoryData(Array.isArray(agedInventoryData) ? agedInventoryData : (agedInventoryData as any)?.agedItems || []);
       setItemsBelowReorderPoint(Array.isArray(itemsBelowReorderPointData) ? itemsBelowReorderPointData : (itemsBelowReorderPointData as any)?.items || []);
-      setItemsAtRiskOfStockOut(Array.isArray(itemsAtRiskOfStockOutData) ? itemsAtRiskOfStockOutData : (itemsAtRiskOfStockOutData as any)?.items || []);
+      setItemsAtRiskOfStockOut(Array.isArray(stockOutForecastData) ? stockOutForecastData : []);
       setLastUpdated(new Date());
 
       // Process ASN data for status summary
@@ -851,7 +880,10 @@ const DashboardPage: React.FC = () => {
       <DashboardHeader
         isOnline={offlineStatus.isOnline}
         lastSyncTime={offlineStatus.lastSyncTime}
-        metrics={metrics}
+        metrics={{
+          ...metrics,
+          inventoryItems: inventoryItems.filter(item => item.quantity > 0).length
+        }}
         asnData={asnData}
         agedInventoryData={agedInventoryData}
         lastUpdated={lastUpdated}

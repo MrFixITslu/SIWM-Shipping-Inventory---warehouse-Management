@@ -67,16 +67,18 @@ const TableInner = <T extends Record<string, any>>(
   };
 
   return (
-    <div className="overflow-x-auto shadow-md rounded-lg">
-      <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
-        <thead className="bg-secondary-50 dark:bg-secondary-700">
+    <div className="overflow-x-auto shadow-card rounded-xl border border-border bg-surface">
+      <table className="min-w-full divide-y divide-border text-sm font-sans">
+        <thead className="bg-background dark:bg-secondary-700">
           <tr>
             {columns.map((column) => (
               <th
                 key={String(column.key)}
                 scope="col"
-                className={`px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-300 uppercase tracking-wider ${column.sortable ? 'cursor-pointer hover:bg-secondary-100 dark:hover:bg-secondary-600 group' : ''}`}
+                className={`px-6 py-3 text-left text-xs font-semibold text-text-secondary dark:text-secondary-300 uppercase tracking-wider select-none ${column.sortable ? 'cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 group transition-colors duration-150' : ''}`}
                 onClick={() => column.sortable && requestSort(column.key)}
+                tabIndex={column.sortable ? 0 : -1}
+                aria-sort={sortConfig.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : undefined}
               >
                 <div className="flex items-center">
                   {column.header}
@@ -85,16 +87,16 @@ const TableInner = <T extends Record<string, any>>(
               </th>
             ))}
             {actions && (
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-300 uppercase tracking-wider">
+              <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-text-secondary dark:text-secondary-300 uppercase tracking-wider">
                 Actions
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
+        <tbody className="bg-surface dark:bg-secondary-800 divide-y divide-border">
           {sortedData.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-8 text-center text-secondary-500 dark:text-secondary-400">
+              <td colSpan={columns.length + (actions ? 1 : 0)} className="px-6 py-8 text-center text-text-secondary dark:text-secondary-400">
                 No data available.
               </td>
             </tr>
@@ -102,16 +104,18 @@ const TableInner = <T extends Record<string, any>>(
             sortedData.map((item, index) => (
               <tr 
                 key={item.id || `row-${index}`}
-                className={`transition-colors duration-150 ${onRowClick ? 'cursor-pointer hover:bg-secondary-50 dark:hover:bg-secondary-700/50' : 'hover:bg-secondary-50 dark:hover:bg-secondary-700/50'} ${rowClassName ? rowClassName(item) : ''}`}
+                className={`transition-colors duration-150 focus-within:bg-primary-50/40 dark:focus-within:bg-primary-900/10 ${onRowClick ? 'cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/10' : 'hover:bg-primary-50 dark:hover:bg-primary-900/10'} ${rowClassName ? rowClassName(item) : ''}`}
                 onClick={() => onRowClick?.(item)}
+                tabIndex={0}
+                aria-label={columns.map(col => String(item[col.key])).join(' ')}
               >
                 {columns.map((column) => (
-                  <td key={`${item.id}-${String(column.key)}`} className="px-6 py-4 whitespace-nowrap text-sm text-secondary-700 dark:text-secondary-300">
+                  <td key={`${item.id}-${String(column.key)}`} className="px-6 py-4 whitespace-nowrap text-text-primary dark:text-secondary-100 align-middle">
                     {column.render ? column.render(item) : String(item[column.key] ?? '')}
                   </td>
                 ))}
                 {actions && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-700 dark:text-secondary-300">
+                  <td className="px-6 py-4 whitespace-nowrap text-text-primary dark:text-secondary-100 align-middle">
                     <div className="flex space-x-2">{actions(item)}</div>
                   </td>
                 )}

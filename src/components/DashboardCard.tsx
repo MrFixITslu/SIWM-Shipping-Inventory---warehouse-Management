@@ -9,20 +9,31 @@ interface DashboardCardProps {
 const DashboardCardInner: React.FC<DashboardCardProps> = ({ metric }) => {
   const IconComponent = metric.icon;
   return (
-    <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300">
+    <div
+      className="bg-surface dark:bg-secondary-800 p-6 rounded-xl shadow-card hover:shadow-xl transition-all duration-200 border border-border group focus-within:ring-2 focus-within:ring-primary-500"
+      tabIndex={0}
+      aria-label={metric.title}
+    >
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-semibold text-secondary-700 dark:text-secondary-300">{metric.title}</h3>
-        <IconComponent className="h-8 w-8 text-primary-500 dark:text-primary-400" />
+        <h3 className="text-lg font-semibold text-text-primary dark:text-secondary-100 tracking-tight group-hover:text-primary-500 transition-colors duration-200">
+          {metric.title}
+        </h3>
+        <span className="inline-flex items-center justify-center rounded-lg bg-primary-50 dark:bg-primary-900/30 p-2 transition-transform duration-200 group-hover:scale-110">
+          <IconComponent className="h-7 w-7 text-primary-500 dark:text-primary-400" aria-hidden="true" />
+        </span>
       </div>
-      <p className="text-4xl font-bold text-secondary-900 dark:text-secondary-100">{metric.value}</p>
+      <p className="text-4xl font-extrabold text-text-primary dark:text-secondary-100 leading-tight mb-1">
+        {metric.value}
+      </p>
       {metric.change && (
-        <div className={`flex items-center text-sm mt-1 ${metric.changeType === 'positive' ? 'text-green-500' : 'text-red-500'}`}>
+        <div className={`flex items-center text-sm mt-1 font-medium ${metric.changeType === 'positive' ? 'text-success' : 'text-error'}`}
+             aria-label={metric.changeType === 'positive' ? 'Increase' : 'Decrease'}>
           {metric.changeType === 'positive' ? <ArrowUpIcon className="h-4 w-4 mr-1" /> : <ArrowDownIcon className="h-4 w-4 mr-1" />}
           <span>{metric.change}</span>
-          <span className="ml-1 text-secondary-500 dark:text-secondary-400">vs last period</span>
+          <span className="ml-1 text-text-secondary dark:text-secondary-400 font-normal">vs last period</span>
         </div>
       )}
-      {metric.description && <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-2">{metric.description}</p>}
+      {metric.description && <p className="text-sm text-text-secondary dark:text-secondary-400 mt-2">{metric.description}</p>}
     </div>
   );
 };

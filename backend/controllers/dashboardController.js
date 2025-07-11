@@ -52,7 +52,7 @@ const getUnacknowledgedCount = async (req, res, next) => {
 const getItemsBelowReorderPoint = async (req, res, next) => {
     try {
         const items = await dashboardServiceBackend.getItemsBelowReorderPoint();
-        res.json(items);
+        res.json({ items });
     } catch (error) {
         next(error);
     }
@@ -61,7 +61,7 @@ const getItemsBelowReorderPoint = async (req, res, next) => {
 const getItemsAtRiskOfStockOut = async (req, res, next) => {
     try {
         const items = await dashboardServiceBackend.getItemsAtRiskOfStockOut();
-        res.json(items);
+        res.json({ items });
     } catch (error) {
         next(error);
     }
