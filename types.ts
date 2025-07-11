@@ -59,6 +59,7 @@ export interface InventoryItem {
   costPrice?: number; // For stock valuation
   entryDate?: string; // For aging report
   lastMovementDate?: string; // For aging report
+  isAged?: boolean; // New: Indicates if this item was in the warehouse before the app was available
 }
 
 export enum OrderStatus {

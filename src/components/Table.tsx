@@ -16,7 +16,7 @@ type SortConfig<T> = {
   direction: 'ascending' | 'descending';
 };
 
-const TableInner = <T extends { id: string | number }>(
+const TableInner = <T extends Record<string, any>>(
   { columns, data, onRowClick, actions, rowClassName }: TableProps<T>
 ): React.ReactElement => {
   const [sortConfig, setSortConfig] = useState<SortConfig<T>>({ key: null, direction: 'ascending' });
@@ -99,9 +99,9 @@ const TableInner = <T extends { id: string | number }>(
               </td>
             </tr>
           ) : (
-            sortedData.map((item) => (
+            sortedData.map((item, index) => (
               <tr 
-                key={item.id}
+                key={item.id || `row-${index}`}
                 className={`transition-colors duration-150 ${onRowClick ? 'cursor-pointer hover:bg-secondary-50 dark:hover:bg-secondary-700/50' : 'hover:bg-secondary-50 dark:hover:bg-secondary-700/50'} ${rowClassName ? rowClassName(item) : ''}`}
                 onClick={() => onRowClick?.(item)}
               >

@@ -5,6 +5,7 @@ export const ALL_PERMISSIONS = [
     { id: 'inventory', name: 'Inventory' },
     { id: 'orders', name: 'Warehouse Orders' },
     { id: 'dispatch', name: 'Dispatch & Logistics' },
+    { id: 'warehouse-management', name: 'Warehouse Management' },
     { id: 'vendors', name: 'Vendors' },
     { id: 'assets', name: 'Asset Management' },
     { id: 'master-data', name: 'Master Data' },
@@ -16,6 +17,7 @@ export const ALL_PERMISSIONS = [
 ];
 
 export const USER_GROUPS = [
+  'Admin',
   'admin',
   'manager',
   'Warehouse',
@@ -24,4 +26,5 @@ export const USER_GROUPS = [
   'Requester',
   'Technician',
   'Contractor',
+  'User Group',
 ];

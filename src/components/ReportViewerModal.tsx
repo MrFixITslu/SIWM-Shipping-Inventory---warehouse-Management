@@ -206,39 +206,41 @@ const ReportViewerModal: React.FC<ReportViewerModalProps> = ({ isOpen, onClose, 
 
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Report: ${reportDefinition.name}`} size="3xl">
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-            <p className="text-sm text-secondary-600 dark:text-secondary-400">{reportDefinition.description}</p>
-            <div className="space-x-2 flex-shrink-0">
-                <button onClick={handleExportCSV} disabled={reportData.length === 0} className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600 rounded-md disabled:opacity-50">Export CSV</button>
-                <button onClick={handleExportPDF} disabled={reportData.length === 0} className="px-4 py-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:text-red-100 dark:hover:bg-red-600 rounded-md disabled:opacity-50">Export PDF</button>
-            </div>
-        </div>
-
-        {renderFilters()}
-        
-        {error && <div className="my-3 p-3 bg-red-100 text-red-700 rounded-md dark:bg-red-700/30 dark:text-red-300">{error}</div>}
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-48">
-            <LoadingSpinner className="w-8 h-8 text-primary-500" />
-            <p className="ml-3 text-secondary-600 dark:text-secondary-400">Loading report data...</p>
+    <Modal isOpen={isOpen} onClose={onClose} title={`Report: ${reportDefinition.name}`} size="full">
+      <div className="w-full max-w-full overflow-x-auto">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+              <p className="text-sm text-secondary-600 dark:text-secondary-400">{reportDefinition.description}</p>
+              <div className="space-x-2 flex-shrink-0">
+                  <button onClick={handleExportCSV} disabled={reportData.length === 0} className="px-3 py-1.5 text-xs font-medium text-green-700 bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600 rounded-md disabled:opacity-50">Export CSV</button>
+                  <button onClick={handleExportPDF} disabled={reportData.length === 0} className="px-4 py-1.5 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:text-red-100 dark:hover:bg-red-600 rounded-md disabled:opacity-50">Export PDF</button>
+              </div>
           </div>
-        ) : reportData.length > 0 && !error ? (
-          <Table columns={reportDefinition.columns as ColumnDefinition<any, keyof any>[]} data={reportData} />
-        ) : (
-          !error && <p className="text-center text-secondary-500 dark:text-secondary-400 py-8">No data available for this report or current filter selection.</p>
-        )}
-        
-        <div className="flex justify-end pt-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md shadow-sm"
-          >
-            Close Report
-          </button>
+
+          {renderFilters()}
+          
+          {error && <div className="my-3 p-3 bg-red-100 text-red-700 rounded-md dark:bg-red-700/30 dark:text-red-300">{error}</div>}
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-48">
+              <LoadingSpinner className="w-8 h-8 text-primary-500" />
+              <p className="ml-3 text-secondary-600 dark:text-secondary-400">Loading report data...</p>
+            </div>
+          ) : reportData.length > 0 && !error ? (
+            <Table columns={reportDefinition.columns as ColumnDefinition<any, keyof any>[]} data={reportData} />
+          ) : (
+            !error && <p className="text-center text-secondary-500 dark:text-secondary-400 py-8">No data available for this report or current filter selection.</p>
+          )}
+          
+          <div className="flex justify-end pt-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md shadow-sm"
+            >
+              Close Report
+            </button>
+          </div>
         </div>
       </div>
     </Modal>

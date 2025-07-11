@@ -386,7 +386,7 @@ const receiveShipment = async (asnId, receivedItems, userId) => {
         const asnRes = await client.query('SELECT * FROM asns WHERE id = $1 FOR UPDATE', [asnId]);
         const asn = asnRes.rows[0];
         if (!asn) throw new Error('ASN not found.');
-        if (asn.status === 'Arrived') throw new Error('Shipment has already been received.');
+        if (asn.status === 'Complete') throw new Error('Shipment has already been completed.');
 
         const expectedItemsRes = await client.query('SELECT * FROM asn_items WHERE asn_id = $1', [asnId]);
         const expectedItemsMap = new Map(expectedItemsRes.rows.map(i => [i.inventory_item_id, i]));
@@ -439,8 +439,8 @@ const receiveShipment = async (asnId, receivedItems, userId) => {
         }
 
         // If there are discrepancies, set status to 'Processing' for review
-        // If no discrepancies, set status to 'Arrived' (complete)
-        const newStatus = discrepancyFound ? 'Processing' : 'Arrived';
+        // If no discrepancies, set status to 'At the Warehouse' (complete)
+        const newStatus = discrepancyFound ? 'Processing' : 'At the Warehouse';
         await client.query('UPDATE asns SET status = $1, arrived_at = CURRENT_TIMESTAMP WHERE id = $2', [newStatus, asnId]);
 
         if (discrepancyFound) {
@@ -486,7 +486,7 @@ const completeShipment = async (asnId, userId) => {
         const asnRes = await client.query('SELECT * FROM asns WHERE id = $1 FOR UPDATE', [asnId]);
         const asn = asnRes.rows[0];
         if (!asn) throw new Error('ASN not found.');
-        if (asn.status !== 'Arrived' && asn.status !== 'Processing') {
+        if (asn.status !== 'At the Warehouse' && asn.status !== 'Processing') {
             throw new Error('Shipment must be received before it can be completed.');
         }
         // Get expected items
@@ -505,7 +505,7 @@ const completeShipment = async (asnId, userId) => {
         // Discrepancy detection (if receivedQuantity !== expectedQuantity)
         const discrepancies = receivedItems.filter(item => item.expectedQuantity !== item.receivedQuantity);
         // Update ASN status and completed_at
-        await client.query('UPDATE asns SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2', ['Added to Stock', asnId]);
+        await client.query('UPDATE asns SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2', ['Complete', asnId]);
         await client.query('COMMIT');
         const updatedAsn = await getASNById(asnId);
         // Send email notification

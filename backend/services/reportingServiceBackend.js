@@ -78,11 +78,13 @@ const getReportData = async (reportKey, filters = {}) => {
           COALESCE(last_movement_date, entry_date) as last_movement_date,
           (CURRENT_DATE - COALESCE(entry_date, CURRENT_DATE)) as days_in_stock,
           cost_price,
-          (quantity * COALESCE(cost_price, 0)) as total_value
+          (quantity * COALESCE(cost_price, 0)) as total_value,
+          is_aged
         FROM inventory_items
+        WHERE is_aged = TRUE
       `;
       if (filters.minDaysInStock && !isNaN(parseInt(filters.minDaysInStock))) {
-        query += ' WHERE (CURRENT_DATE - COALESCE(entry_date, CURRENT_DATE)) >= $1';
+        query += ' AND (CURRENT_DATE - COALESCE(entry_date, CURRENT_DATE)) >= $1';
         queryParams.push(parseInt(filters.minDaysInStock));
       }
       query += ' ORDER BY days_in_stock DESC';

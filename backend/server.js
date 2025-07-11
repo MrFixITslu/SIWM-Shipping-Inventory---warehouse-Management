@@ -64,6 +64,8 @@ const dashboardRoutes = require('./routes/dashboardRoutes'); // Import Dashboard
 const systemRoutes = require('./routes/systemRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const logisticsRoutes = require('./routes/logisticsRoutes'); // For advanced logistics optimization
+const warehouseRoutes = require('./routes/warehouseRoutes'); // For multi-warehouse support
+const supportRoutes = require('./routes/supportRoutes'); // For customer support
 
 const startApp = async () => {
     // 1. Connect to Database first
@@ -72,6 +74,15 @@ const startApp = async () => {
     // 2. Initialize Express App after DB is ready
     const app = express();
     
+    // Disable ETag to prevent 304 Not Modified responses
+    app.disable('etag');
+
+    // Add no-cache headers to all API responses
+    app.use((req, res, next) => {
+      res.set('Cache-Control', 'no-store');
+      next();
+    });
+
     // 3. Middleware
     const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
 
@@ -225,6 +236,8 @@ const startApp = async () => {
     app.use(`${API_PREFIX}/system`, systemRoutes);
     app.use(`${API_PREFIX}/events`, eventRoutes);
     app.use(`${API_PREFIX}/logistics`, logisticsRoutes);
+    app.use(`${API_PREFIX}/warehouses`, warehouseRoutes);
+    app.use(`${API_PREFIX}/support`, supportRoutes);
     
     // 6. Error Handlers
     app.use(notFound); 

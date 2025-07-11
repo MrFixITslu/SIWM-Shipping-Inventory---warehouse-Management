@@ -10,7 +10,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
   contentRef?: React.RefObject<HTMLDivElement>; // For scrolling control from parent
 }
 
@@ -44,6 +44,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
     '3xl': 'max-w-3xl',
+    full: 'max-w-screen-2xl',
   };
 
   return (

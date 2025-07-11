@@ -11,7 +11,7 @@ import BrokerFeeModal from '@/components/BrokerFeeModal';
 import FinanceApprovalModal from '@/components/FinanceApprovalModal';
 import PaymentConfirmationModal from '@/components/PaymentConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { OutboundShipment, ColumnDefinition, WarehouseOrder, OrderStatus, AlertSeverity, OrderItem, FeeStatus, UserSummary } from '@/types';
 import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, CheckBadgeIcon, AiIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, CurrencyDollarIcon, ShipmentIcon } from '@/constants';
@@ -20,7 +20,7 @@ import { orderService } from '@/services/orderService';
 import { aiInsightService } from '@/services/aiInsightService'; 
 import { alertingService } from '@/services/alertingService';
 import { userService } from '@/services/userService';
-import { LoadingSpinner } from '@/components/icons/LoadingSpinner';
+import LoadingSpinner from '@/components/icons/LoadingSpinner';
 
 const TAILWIND_INPUT_CLASSES = "shadow-sm appearance-none border border-secondary-300 bg-white text-secondary-900 rounded-md px-3 py-2 dark:border-secondary-600 dark:bg-secondary-700 dark:text-secondary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm";
 
@@ -423,7 +423,7 @@ const DispatchLogisticsPage: React.FC = () => {
       {/* Modals */}
       <PickingModal isOpen={isPickingModalOpen} onClose={() => setIsPickingModalOpen(false)} order={orderForPicking} onPickComplete={handlePickComplete}/>
       <BrokerFeeModal isOpen={isBrokerFeeModalOpen} onClose={() => setIsBrokerFeeModalOpen(false)} shipment={shipmentForAction} onActionComplete={() => {}} onSubmitFees={dispatchService.submitFees}/>
-      <FinanceApprovalModal isOpen={isFinanceModalOpen} onClose={() => setIsFinanceModalOpen(false)} shipment={shipmentForAction} onActionCompleted={() => {}} onApproveFees={dispatchService.approveFees}/>
+      <FinanceApprovalModal isOpen={isFinanceModalOpen} onClose={() => setIsFinanceModalOpen(false)} shipment={shipmentForAction} onActionComplete={() => {}} onApproveFees={dispatchService.approveFees}/>
       <PaymentConfirmationModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} shipment={shipmentForAction} onActionComplete={() => {}} onConfirmPayment={dispatchService.confirmPayment} />
       
       <Modal isOpen={isStatusModalOpen} onClose={handleCloseStatusModal} title={`Update Status for Order #${currentOrderForStatus?.id}`}>

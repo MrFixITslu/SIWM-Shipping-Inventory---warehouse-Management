@@ -33,18 +33,27 @@ const InventoryManagementPage: React.FC = () => {
   const [isSerialModalOpen, setIsSerialModalOpen] = useState(false);
   const [selectedItemForSerials, setSelectedItemForSerials] = useState<InventoryItem | null>(null);
 
+  // Add filter state
+  const [agedFilter, setAgedFilter] = useState<'all' | 'aged' | 'non-aged'>('all');
+
   const { isModalOpen: isConfirmDeleteOpen, showConfirmation, handleConfirm: handleConfirmDelete, handleClose: handleCloseDeleteConfirm } = useConfirmationModal();
 
   const filteredInventory = useMemo(() => {
-    if (!searchTerm.trim()) return inventory;
+    let result = inventory;
+    if (agedFilter === 'aged') {
+      result = result.filter(item => item.isAged);
+    } else if (agedFilter === 'non-aged') {
+      result = result.filter(item => !item.isAged);
+    }
+    if (!searchTerm.trim()) return result;
     const lower = searchTerm.toLowerCase();
-    return inventory.filter(item =>
+    return result.filter(item =>
       item.name?.toLowerCase().includes(lower) ||
       item.sku?.toLowerCase().includes(lower) ||
       item.category?.toLowerCase().includes(lower) ||
       item.location?.toLowerCase().includes(lower)
     );
-  }, [inventory, searchTerm]);
+  }, [inventory, searchTerm, agedFilter]);
 
   const handleOpenItemModal = useCallback((item?: InventoryItem) => {
     setError(null);
@@ -185,6 +194,7 @@ const InventoryManagementPage: React.FC = () => {
     { key: 'quantity', header: 'Quantity', sortable: true, render: (item) => item.isSerialized ? item.serialNumbers?.length || 0 : item.quantity },
     { key: 'location', header: 'Location', sortable: true },
     { key: 'reorderPoint', header: 'Reorder Point', sortable: true, render: (item) => item.reorderPoint },
+    { key: 'isAged', header: 'Aged Item', sortable: true, render: (item) => item.isAged ? '✔️' : '' },
   ], []);
 
   if (inventoryError) {
@@ -221,18 +231,32 @@ const InventoryManagementPage: React.FC = () => {
         </button>
       }
     >
-      <div className="mb-4">
-        <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <SearchIcon className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:space-x-4">
+        <div className="relative flex-1">
+          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-secondary-400" />
+          <label htmlFor="search-inventory" className="sr-only">Search inventory</label>
+          <input
+            id="search-inventory"
             type="text"
-            placeholder="Search inventory (name, SKU, category, location)..."
+            placeholder="Search inventory..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full pl-10 pr-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md leading-5 bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100 placeholder-secondary-400 dark:placeholder-secondary-500 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-            />
+            onChange={e => setSearchTerm(e.target.value)}
+            className={`${TAILWIND_INPUT_CLASSES} pl-10 w-full max-w-md`}
+            autoComplete="off"
+          />
+        </div>
+        <div className="mt-2 md:mt-0">
+          <label htmlFor="aged-filter" className="mr-2 text-sm font-medium text-secondary-700 dark:text-secondary-300">Aged Filter:</label>
+          <select
+            id="aged-filter"
+            value={agedFilter}
+            onChange={e => setAgedFilter(e.target.value as 'all' | 'aged' | 'non-aged')}
+            className="border border-secondary-300 dark:border-secondary-600 rounded-md px-2 py-1 text-sm bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+          >
+            <option value="all">All</option>
+            <option value="aged">Only Aged</option>
+            <option value="non-aged">Only Non-Aged</option>
+          </select>
         </div>
       </div>
 
@@ -315,6 +339,20 @@ const InventoryManagementPage: React.FC = () => {
               <span className="ml-2 text-sm text-secondary-700 dark:text-secondary-300">Item is Serialized</span>
             </label>
             <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">If checked, quantity is managed via individual serial numbers. Add serials after creating the item.</p>
+          </div>
+
+          <div className="pt-2">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                name="isAged"
+                checked={currentItem.isAged || false}
+                onChange={handleInputChange}
+                className="h-4 w-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
+              />
+              <span className="ml-2 text-sm text-secondary-700 dark:text-secondary-300">Aged Item</span>
+            </label>
+            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">Check this to mark as aged, or items older than 365 days are automatically aged.</p>
           </div>
 
           {!currentItem.isSerialized && (

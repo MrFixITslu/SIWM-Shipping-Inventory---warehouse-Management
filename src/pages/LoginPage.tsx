@@ -3,7 +3,7 @@
 
 import React, { useState, FormEvent } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import PageContainer from '@/components/PageContainer';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { APP_NAME, WarningIcon } from '@/constants'; 

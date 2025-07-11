@@ -41,7 +41,7 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
   {
     id: 'inv_aging_report',
     name: 'Inventory Aging Report',
-    description: 'Identify slow-moving and obsolete stock based on age.',
+    description: 'View items marked as aged (pre-existing inventory before app deployment).',
     category: ReportCategory.Inventory,
     sampleDataKey: 'inv_aging_report',
     filters: [{ id: 'minDaysInStock', label: 'Min. Days In Stock', type: 'number-range' }],
@@ -52,8 +52,15 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
       { key: 'entryDate', header: 'Entry Date', sortable: true },
       { key: 'lastMovementDate', header: 'Last Movement', sortable: true },
       { key: 'daysInStock', header: 'Days In Stock', sortable: true },
-      { key: 'costPrice', header: 'Cost Price', sortable: true, render: (item: {costPrice?: number}) => item.costPrice ? `$${item.costPrice.toFixed(2)}` : 'N/A' },
-      { key: 'totalValue', header: 'Total Value', sortable: true, render: (item: {quantity: number; costPrice?: number}) => `$${(item.quantity * (item.costPrice || 0)).toFixed(2)}` },
+      { key: 'costPrice', header: 'Cost Price', sortable: true, render: (item: {costPrice?: number|string}) => {
+        const price = Number(item.costPrice);
+        return !isNaN(price) ? `$${price.toFixed(2)}` : 'N/A';
+      } },
+      { key: 'totalValue', header: 'Total Value', sortable: true, render: (item: {quantity: number; costPrice?: number|string}) => {
+        const price = Number(item.costPrice);
+        return !isNaN(price) ? `$${(item.quantity * price).toFixed(2)}` : 'N/A';
+      } },
+      { key: 'isAged', header: 'Aged Item', sortable: true, render: (item: {isAged?: boolean}) => item.isAged ? '✔️' : '' },
     ],
   },
   {

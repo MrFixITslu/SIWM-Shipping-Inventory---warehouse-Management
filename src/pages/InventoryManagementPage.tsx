@@ -9,7 +9,7 @@ import SerialManagementModal from '@/components/SerialManagementModal';
 import AutocompleteInput from '@/components/AutocompleteInput';
 import useConfirmationModal from '@/hooks/useConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { InventoryItem, ColumnDefinition } from '@/types';
 import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, SerialIcon, ArrowLeftOnRectangleIcon, ShipmentIcon } from '@/constants';
 import { inventoryService } from '@/services/inventoryService';
@@ -18,12 +18,25 @@ import { debounce } from '@/utils/performance';
 import { asnService } from '@/services/asnService';
 
 const TAILWIND_INPUT_CLASSES = "shadow-sm appearance-none border border-secondary-300 bg-white text-secondary-900 rounded-md px-3 py-2 dark:border-secondary-600 dark:bg-secondary-700 dark:text-secondary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm";
+const departmentOptions = ["Digicel+", "Digicel Business", "Commercial", "Marketing", "Outside Plant (OSP)", "Field Force & HVAC"];
 
 const InventoryManagementPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isLoadingAuth } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const asnId = searchParams.get('asnId');
+
+  // Show loading spinner while auth is being checked
+  if (isLoadingAuth) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
+        <div className="text-center">
+          <LoadingSpinner className="w-12 h-12 text-primary-500 mx-auto mb-3" />
+          <p className="text-lg font-medium text-secondary-600 dark:text-secondary-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   const {
     inventory,
@@ -48,6 +61,9 @@ const InventoryManagementPage: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [addedItemsForAsn, setAddedItemsForAsn] = useState<Array<{name: string, sku: string, quantity: number, serialNumbers?: string[]}>>([]);
 
+  // Add filter state
+  const [agedFilter, setAgedFilter] = useState<'all' | 'aged' | 'non-aged'>('all');
+
   const { isModalOpen: isConfirmDeleteOpen, confirmButtonText, showConfirmation, handleConfirm: handleConfirmDelete, handleClose: handleCloseDeleteConfirm } = useConfirmationModal();
 
   const handleReturnToShipment = async () => {
@@ -57,26 +73,32 @@ const InventoryManagementPage: React.FC = () => {
         setError('You must add at least one item to receive for this shipment.');
         return;
       }
-      // Map addedItemsForAsn to ReceivedItem[]
-      const receivedItems = addedItemsForAsn.map(added => {
-        const inv = inventory.find(i => i.name === added.name && i.sku === added.sku);
-        return {
-          itemId: inv?.id || 0,
-          receivedQuantity: added.quantity,
-          receivedSerials: added.serialNumbers,
-        };
-      });
-      if (receivedItems.some(item => !item.itemId)) {
-        setError('One or more items could not be matched to inventory. Please check item names and SKUs.');
+      // Fetch ASN to check status
+      const asn = await asnService.getASNById(Number(asnId));
+      if (!asn) {
+        setError('ASN not found.');
         return;
       }
-      await asnService.receiveShipment(Number(asnId), receivedItems);
-      // Include information about added items in the URL
+      // Only call receiveShipment if ASN is not already received/processing
+      if (asn.status === 'On Time' || asn.status === 'Delayed' || asn.status === 'At the Warehouse') {
+        // Map addedItemsForAsn to ReceivedItem[]
+        const receivedItems = addedItemsForAsn.map(added => {
+          const inv = inventory.find(i => i.name === added.name && i.sku === added.sku);
+          return {
+            itemId: inv?.id || 0,
+            receivedQuantity: added.quantity,
+            receivedSerials: added.serialNumbers,
+          };
+        });
+        if (receivedItems.some(item => !item.itemId)) {
+          setError('One or more items could not be matched to inventory. Please check item names and SKUs.');
+          return;
+        }
+        await asnService.receiveShipment(Number(asnId), receivedItems);
+      }
+      // Always navigate back to incoming shipments
       const addedItemsParam = addedItemsForAsn.length > 0 ? `&addedItems=${encodeURIComponent(JSON.stringify(addedItemsForAsn))}` : '';
       const url = `/incoming-shipments?selectedAsn=${asnId}${addedItemsParam}`;
-      console.log('Navigating to URL:', url);
-      console.log('asnId:', asnId);
-      console.log('addedItemsForAsn:', addedItemsForAsn);
       navigate(url);
     } catch (err: any) {
       setError(err.message || 'Failed to mark shipment as received.');
@@ -128,15 +150,21 @@ const InventoryManagementPage: React.FC = () => {
   }, [lastUpdatedId, clearLastUpdatedId]);
 
   const filteredInventory = useMemo(() => {
-    if (!debouncedSearchTerm.trim()) return inventory;
+    let result = inventory;
+    if (agedFilter === 'aged') {
+      result = result.filter(item => item.isAged);
+    } else if (agedFilter === 'non-aged') {
+      result = result.filter(item => !item.isAged);
+    }
+    if (!debouncedSearchTerm.trim()) return result;
     const lower = debouncedSearchTerm.toLowerCase();
-    return inventory.filter(item =>
+    return result.filter(item =>
       item.name?.toLowerCase().includes(lower) ||
       item.sku?.toLowerCase().includes(lower) ||
       item.category?.toLowerCase().includes(lower) ||
       item.location?.toLowerCase().includes(lower)
     );
-  }, [inventory, debouncedSearchTerm]);
+  }, [inventory, debouncedSearchTerm, agedFilter]);
 
   const handleOpenItemModal = useCallback((item?: InventoryItem) => {
     setError(null);
@@ -230,6 +258,13 @@ const InventoryManagementPage: React.FC = () => {
     }));
   };
 
+  const handleDepartmentChange = (value: string) => {
+    setCurrentItem(prev => ({
+      ...prev,
+      department: value,
+    }));
+  };
+
   const handleSaveItem = async () => {
     console.log('handleSaveItem called with currentItem:', currentItem);
     setError(null);
@@ -240,6 +275,7 @@ const InventoryManagementPage: React.FC = () => {
         item.name === currentItem.name && 
         item.sku === currentItem.sku && 
         item.category === currentItem.category && 
+        item.department === currentItem.department &&
         item.location === currentItem.location
       );
 
@@ -287,8 +323,8 @@ const InventoryManagementPage: React.FC = () => {
           costPrice: Number(currentItem.costPrice || 0),
         };
 
-        if (!tempItem.name || !tempItem.sku || !tempItem.category || !tempItem.location) {
-          throw new Error('Name, SKU, Category, and Location are required fields.');
+        if (!tempItem.name || !tempItem.sku || !tempItem.category || !tempItem.department || !tempItem.location) {
+          throw new Error('Name, SKU, Category, Department, and Location are required fields.');
         }
 
         // Store the temporary item data for serial management
@@ -312,8 +348,8 @@ const InventoryManagementPage: React.FC = () => {
           costPrice: Number(currentItem.costPrice || 0),
         };
 
-        if (!itemToSave.name || !itemToSave.sku || !itemToSave.category || !itemToSave.location) {
-          throw new Error('Name, SKU, Category, and Location are required fields.');
+        if (!itemToSave.name || !itemToSave.sku || !itemToSave.category || !itemToSave.department || !itemToSave.location) {
+          throw new Error('Name, SKU, Category, Department, and Location are required fields.');
         }
 
         console.log('Saving item:', itemToSave);
@@ -455,6 +491,7 @@ const InventoryManagementPage: React.FC = () => {
     { key: 'quantity', header: 'Quantity', sortable: true, render: (item) => item.isSerialized ? item.serialNumbers?.length || 0 : item.quantity },
     { key: 'location', header: 'Location', sortable: true },
     { key: 'reorderPoint', header: 'Reorder Point', sortable: true, render: (item) => item.reorderPoint },
+    { key: 'isAged', header: 'Aged Item', sortable: true, render: (item) => item.isAged ? '✔️' : '' },
   ], []);
 
   if (inventoryError) {
@@ -541,8 +578,8 @@ const InventoryManagementPage: React.FC = () => {
           </ul>
         </div>
       )}
-      <div className="mb-4">
-        <div className="relative">
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:space-x-4">
+        <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-secondary-400" />
           <label htmlFor="search-inventory" className="sr-only">Search inventory</label>
           <input
@@ -554,6 +591,19 @@ const InventoryManagementPage: React.FC = () => {
             className={`${TAILWIND_INPUT_CLASSES} pl-10 w-full max-w-md`}
             autoComplete="off"
           />
+        </div>
+        <div className="mt-2 md:mt-0">
+          <label htmlFor="aged-filter" className="mr-2 text-sm font-medium text-secondary-700 dark:text-secondary-300">Aged Filter:</label>
+          <select
+            id="aged-filter"
+            value={agedFilter}
+            onChange={e => setAgedFilter(e.target.value as 'all' | 'aged' | 'non-aged')}
+            className="border border-secondary-300 dark:border-secondary-600 rounded-md px-2 py-1 text-sm bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+          >
+            <option value="all">All</option>
+            <option value="aged">Only Aged</option>
+            <option value="non-aged">Only Non-Aged</option>
+          </select>
         </div>
       </div>
 
@@ -646,6 +696,22 @@ const InventoryManagementPage: React.FC = () => {
               />
             </div>
             <div>
+              <label htmlFor="item-department" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
+                Department *
+              </label>
+              <select
+                id="item-department"
+                name="department"
+                value={currentItem.department || ''}
+                onChange={(e) => handleDepartmentChange(e.target.value)}
+                className={TAILWIND_INPUT_CLASSES}
+                required
+              >
+                <option value="">Select Department</option>
+                {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
               <AutocompleteInput
                 value={currentItem.location || ''}
                 onChange={handleLocationChange}
@@ -674,7 +740,7 @@ const InventoryManagementPage: React.FC = () => {
             </div>
             <div>
               <label htmlFor="item-quantity" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300 mb-1">
-                {currentItem.isSerialized ? 'Serial Numbers Count' : 'Quantity to Add'}
+                {currentItem.isSerialized ? 'Serial Numbers Count' : (currentItem.id ? 'Quantity to Update' : 'Quantity to Add')}
               </label>
               <input
                 id="item-quantity"
@@ -719,6 +785,20 @@ const InventoryManagementPage: React.FC = () => {
             </label>
           </div>
 
+          <div className="flex items-center">
+            <input
+              id="item-isAged"
+              type="checkbox"
+              name="isAged"
+              checked={currentItem.isAged || false}
+              onChange={handleInputChange}
+              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-secondary-300 rounded"
+            />
+            <label htmlFor="item-isAged" className="ml-2 block text-sm text-secondary-700 dark:text-secondary-300">
+              Aged Items
+            </label>
+          </div>
+
           <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
@@ -732,7 +812,7 @@ const InventoryManagementPage: React.FC = () => {
               disabled={isSaving}
               className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md transition-colors disabled:opacity-50"
             >
-              {isSaving ? 'Saving...' : 'Add Item'}
+              {isSaving ? 'Saving...' : (currentItem.id ? 'Update' : 'Add Item')}
             </button>
           </div>
         </form>

@@ -41,7 +41,9 @@ import {
   ShieldCheckIcon as HeroShieldCheckIcon,
   ClockIcon as HeroClockIcon,
   XCircleIcon as HeroXCircleIcon,
-  ArrowUpTrayIcon as HeroArrowUpTrayIcon
+  ArrowUpTrayIcon as HeroArrowUpTrayIcon,
+  ArrowPathIcon as HeroArrowPathIcon,
+  BuildingOfficeIcon as HeroBuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
 // Re-exporting Heroicons with a consistent style or providing custom ones
@@ -90,6 +92,8 @@ export const CurrencyDollarIcon: React.FC<React.SVGProps<SVGSVGElement>> = (prop
 export const ShieldCheckIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <HeroShieldCheckIcon {...props} />;
 export const ClockIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <HeroClockIcon {...props} />;
 export const XCircleIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <HeroXCircleIcon {...props} />;
+export const ArrowPathIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <HeroArrowPathIcon {...props} />;
+export const BuildingOfficeIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => <HeroBuildingOfficeIcon {...props} />;
 
 
 // Direct export for icons used by their original names

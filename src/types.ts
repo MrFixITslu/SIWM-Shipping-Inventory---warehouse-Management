@@ -29,7 +29,7 @@ export interface ASN {
   department?: string;
   supplier: string;
   expectedArrival: string;
-  status: 'On Time' | 'Delayed' | 'Arrived' | 'Processing' | 'Processed' | 'Added to Stock';
+  status: 'On Time' | 'Delayed' | 'At the Warehouse' | 'Processing' | 'Discrepancy Review' | 'Complete';
   itemCount: number;
   carrier: string;
   poFileData?: string;
@@ -58,6 +58,7 @@ export interface InventoryItem {
   name: string;
   sku: string;
   category: string;
+  department?: string; // New: Department field for inventory items
   quantity: number; // For non-serialized, this is total. For serialized, this is serialNumbers.length
   location: string; // e.g., Aisle 5, Shelf B
   reorderPoint: number;
@@ -69,6 +70,7 @@ export interface InventoryItem {
   costPrice?: number; // For stock valuation
   entryDate?: string; // For aging report
   lastMovementDate?: string; // For aging report
+  isAged?: boolean; // New: Indicates if this item was in the warehouse before the app was available
 }
 
 export enum OrderStatus {
@@ -389,4 +391,300 @@ export interface ReceivedItem {
     itemId: number;
     receivedQuantity: number;
     receivedSerials?: string[];
+}
+
+export interface Warehouse {
+  id: number;
+  name: string;
+  code: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code?: string;
+  phone?: string;
+  email?: string;
+  manager_id?: number;
+  capacity_sqft?: number;
+  status: 'active' | 'inactive' | 'maintenance';
+  timezone: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WarehouseZone {
+  id: number;
+  warehouse_id: number;
+  name: string;
+  code: string;
+  description?: string;
+  temperature_zone: 'ambient' | 'cold' | 'frozen';
+  created_at: string;
+}
+
+export interface WarehouseAisle {
+  id: number;
+  zone_id: number;
+  name: string;
+  code: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface WarehouseShelf {
+  id: number;
+  aisle_id: number;
+  name: string;
+  code: string;
+  level: number;
+  capacity_cubic_ft?: number;
+  created_at: string;
+}
+
+export interface SupportTicket {
+  id: number;
+  ticket_number: string;
+  title: string;
+  description: string;
+  category: 'technical' | 'billing' | 'inventory' | 'shipping' | 'general';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  assigned_to?: number;
+  created_by: number;
+  warehouse_id?: number;
+  related_order_id?: number;
+  related_shipment_id?: number;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string;
+  resolution_notes?: string;
+}
+
+export interface SupportTicketResponse {
+  id: number;
+  ticket_id: number;
+  user_id?: number;
+  message: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
+export interface OfflineAction {
+  id: number;
+  user_id: number;
+  action_type: 'create' | 'update' | 'delete';
+  entity_type: 'inventory' | 'order' | 'shipment' | 'asn' | 'support_ticket';
+  entity_id?: number;
+  action_data: any;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  error_message?: string;
+  created_at: string;
+  processed_at?: string;
+  retry_count: number;
+}
+
+export interface InventoryMovement {
+  id: number;
+  inventory_item_id: number;
+  warehouse_id: number;
+  movement_type: 'received' | 'shipped' | 'transferred' | 'adjusted' | 'counted';
+  quantity: number;
+  from_location?: string;
+  to_location?: string;
+  reference_type?: 'order' | 'shipment' | 'asn' | 'manual';
+  reference_id?: number;
+  performed_by?: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface WarehouseCapacity {
+  id: number;
+  warehouse_id: number;
+  date: string;
+  total_capacity_cubic_ft?: number;
+  used_capacity_cubic_ft?: number;
+  available_capacity_cubic_ft?: number;
+  capacity_percentage?: number;
+  created_at: string;
+}
+
+export interface WarehousePerformance {
+  id: number;
+  warehouse_id: number;
+  date: string;
+  orders_processed: number;
+  shipments_processed: number;
+  items_received: number;
+  items_shipped: number;
+  average_order_fulfillment_time_hours?: number;
+  average_shipment_processing_time_hours?: number;
+  created_at: string;
+}
+
+// Enhanced InventoryItem with warehouse support
+export interface InventoryItem {
+  id: number;
+  name: string;
+  sku: string;
+  category: string;
+  department?: string; // New: Department field for inventory items
+  quantity: number;
+  location: string;
+  reorderPoint: number;
+  supplierId?: number;
+  lastStocktakeDate?: string;
+  imageUrl?: string; 
+  isSerialized?: boolean;
+  serialNumbers?: string[];
+  costPrice?: number;
+  entryDate?: string;
+  lastMovementDate?: string;
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
+  zone_code?: string;
+  aisle_code?: string;
+  shelf_code?: string;
+  safety_stock?: number;
+  primary_vendor_id?: number;
+}
+
+// Enhanced WarehouseOrder with warehouse support
+export interface WarehouseOrder {
+  id: number;
+  department: string;
+  items: OrderItem[];
+  status: OrderStatus;
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: string;
+  picker?: string;
+  technicianId?: number;
+  statusHistory?: Array<{ status: string; timestamp: string; userId?: number; userName?: string; }>;
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
+}
+
+// Enhanced ASN with warehouse support
+export interface ASN {
+  id: number;
+  poNumber?: string;
+  department?: string;
+  supplier: string;
+  expectedArrival: string;
+  status: 'On Time' | 'Delayed' | 'At the Warehouse' | 'Processing' | 'Discrepancy Review' | 'Complete';
+  itemCount: number;
+  carrier: string;
+  poFileData?: string;
+  poFileName?: string;
+  vendorInvoiceData?: string;
+  vendorInvoiceName?: string;
+  shippingInvoiceData?: string;
+  shippingInvoiceName?: string;
+  billOfLadingData?: string;
+  billOfLadingName?: string;
+  brokerId?: number;
+  brokerName?: string;
+  fees?: ShipmentFees;
+  feeStatus?: FeeStatus;
+  feeStatusHistory?: Array<{ status: string; timestamp: string; userId?: number; fromStatus?: string }>;
+  paymentConfirmationName?: string;
+  paymentConfirmationData?: string;
+  createdAt?: string;
+  completedAt?: string;
+  items?: ASNItem[];
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
+}
+
+// Enhanced OutboundShipment with warehouse support
+export interface OutboundShipment {
+  id: number;
+  orderId?: number;
+  carrier: 'FedEx' | 'UPS' | 'DHL' | 'Other';
+  trackingNumber: string;
+  destinationAddress: string;
+  status: 'Preparing' | 'In Transit' | 'Delivered' | 'Delayed' | 'Returned';
+  dispatchDate: string;
+  estimatedDeliveryDate: string;
+  shippedSerialNumbers?: Record<number, string[]>; 
+  actualDeliveryDate?: string;
+  brokerId?: number;
+  brokerName?: string;
+  fees?: ShipmentFees;
+  feeStatus?: FeeStatus;
+  feeStatusHistory?: Array<{ status: string; timestamp: string; userId?: number; fromStatus?: string }>;
+  paymentConfirmationName?: string;
+  paymentConfirmationData?: string;
+  createdAt?: string;
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
+}
+
+// Enhanced Vendor with warehouse support
+export interface Vendor {
+  id: number;
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  performanceScore: number;
+  lastCommunicationDate: string;
+  products: string[];
+  averageLeadTime?: number;
+  totalSpend?: number;
+  // New warehouse-related fields
+  preferred_warehouse_id?: number;
+  preferred_warehouse_name?: string;
+}
+
+// Dashboard types for multi-warehouse
+export interface WarehouseMetric {
+  warehouse_id: number;
+  warehouse_name: string;
+  warehouse_code: string;
+  active_shipments: number;
+  inventory_items: number;
+  pending_orders: number;
+  dispatches_today: number;
+  stock_alerts: number;
+  capacity_percentage: number;
+}
+
+export interface InventoryFlowData {
+  warehouse_id: number;
+  warehouse_name: string;
+  movements_today: number;
+  items_received: number;
+  items_shipped: number;
+  items_transferred: number;
+  average_processing_time_hours: number;
+}
+
+// Customer Support Dashboard types
+export interface SupportDashboardMetric {
+  total_tickets: number;
+  open_tickets: number;
+  resolved_today: number;
+  average_resolution_time_hours: number;
+  tickets_by_priority: Record<string, number>;
+  tickets_by_category: Record<string, number>;
+}
+
+// Offline capability types
+export interface OfflineStatus {
+  isOnline: boolean;
+  lastSyncTime?: string;
+  pendingActions: number;
+  syncInProgress: boolean;
+}
+
+export interface SyncResult {
+  success: boolean;
+  syncedActions: number;
+  failedActions: number;
+  errors: string[];
 }

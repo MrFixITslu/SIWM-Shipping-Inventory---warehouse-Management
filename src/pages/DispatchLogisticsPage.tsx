@@ -10,7 +10,7 @@ import BrokerFeeModal from '@/components/BrokerFeeModal';
 import FinanceApprovalModal from '@/components/FinanceApprovalModal';
 import PaymentConfirmationModal from '@/components/PaymentConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { OutboundShipment, ColumnDefinition, WarehouseOrder, OrderStatus, AlertSeverity, OrderItem, FeeStatus, UserSummary } from '@/types';
 import { PlusIcon, EditIcon, DeleteIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, CurrencyDollarIcon, ShipmentIcon } from '@/constants';

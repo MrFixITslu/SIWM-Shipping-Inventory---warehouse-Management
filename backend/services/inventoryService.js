@@ -39,7 +39,7 @@ const getInventoryItemById = async (id) => {
 const createInventoryItem = async (itemData) => { // Expects camelCase
   const pool = getPool();
   const dbData = mapToSnake(itemData);
-  const { sku, name, category, location, reorder_point, is_serialized, serial_numbers, cost_price, entry_date, last_movement_date, image_url, safety_stock, primary_vendor_id } = dbData;
+  const { sku, name, category, location, reorder_point, is_serialized, serial_numbers, cost_price, entry_date, last_movement_date, image_url, safety_stock, primary_vendor_id, is_aged, department } = dbData;
   let quantity = dbData.quantity;
 
   if (is_serialized) {
@@ -49,9 +49,28 @@ const createInventoryItem = async (itemData) => { // Expects camelCase
   // Set default safety stock if not provided
   const safetyStock = safety_stock || Math.max(Math.floor(reorder_point * 0.2), 10);
 
+  // Check if item should be automatically marked as aged (older than 365 days)
+  let finalIsAged = is_aged || false;
+  if (entry_date) {
+    const entryDate = new Date(entry_date);
+    const now = new Date();
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    if (entryDate < oneYearAgo) {
+      finalIsAged = true;
+    }
+  }
+
+  // Try to add department column if it doesn't exist
+  try {
+    await pool.query('ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS department VARCHAR(255)');
+  } catch (error) {
+    // Column might already exist, ignore error
+    console.log('Department column check completed');
+  }
+
   const res = await pool.query(
-    'INSERT INTO inventory_items (sku, name, category, quantity, location, reorder_point, is_serialized, serial_numbers, cost_price, entry_date, last_movement_date, image_url, safety_stock, primary_vendor_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *',
-    [sku, name, category, quantity, location, reorder_point, is_serialized, serial_numbers || null, cost_price, entry_date, last_movement_date, image_url, safetyStock, primary_vendor_id || null]
+    'INSERT INTO inventory_items (sku, name, category, department, quantity, location, reorder_point, is_serialized, serial_numbers, cost_price, entry_date, last_movement_date, image_url, safety_stock, primary_vendor_id, is_aged) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *',
+    [sku, name, category, department || null, quantity, location, reorder_point, is_serialized, serial_numbers || null, cost_price, entry_date, last_movement_date, image_url, safetyStock, primary_vendor_id || null, finalIsAged]
   );
   const newItem = mapDbItemToAppItem(res.rows[0]);
   sendEvent('inventory_created', newItem);
@@ -66,7 +85,30 @@ const updateInventoryItem = async (id, updatedData) => { // Expects camelCase
   const currentItemDb = (await pool.query('SELECT * FROM inventory_items WHERE id = $1', [itemId])).rows[0];
   if (!currentItemDb) return null;
 
+  // Try to add department column if it doesn't exist
+  try {
+    await pool.query('ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS department VARCHAR(255)');
+  } catch (error) {
+    // Column might already exist, ignore error
+    console.log('Department column check completed');
+  }
+
   const dbData = mapToSnake(updatedData);
+  // Ensure is_aged is mapped if present
+  if (typeof updatedData.isAged !== 'undefined') {
+    dbData.is_aged = updatedData.isAged;
+  }
+  
+  // Check if item should be automatically marked as aged (older than 365 days)
+  const entryDate = dbData.entry_date || currentItemDb.entry_date;
+  if (entryDate) {
+    const itemDate = new Date(entryDate);
+    const now = new Date();
+    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    if (itemDate < oneYearAgo) {
+      dbData.is_aged = true;
+    }
+  }
   
   // Handle quantity derivation based on is_serialized and serial_numbers
   const isSerialized = dbData.hasOwnProperty('is_serialized') ? dbData.is_serialized : currentItemDb.is_serialized;

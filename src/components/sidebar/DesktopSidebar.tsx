@@ -49,11 +49,16 @@ const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
             >
               <div className="relative flex-shrink-0">
                 <item.icon className={commonIconClass} />
-                {item.notificationCount && item.notificationCount > 0 && (
-                  <span className="absolute -top-1 right-0 transform translate-x-1/2 -translate-y-1/2 bg-red-500 text-white text-[10px] font-bold min-w-[1rem] h-4 px-1 flex items-center justify-center rounded-full border-2 border-white dark:border-secondary-800">
+                {isOpen && item.notificationCount && item.notificationCount > 0 &&
+                  <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full align-super relative -top-2">
                     {item.notificationCount}
                   </span>
-                )}
+                }
+                {!isOpen && item.notificationCount && item.notificationCount > 0 &&
+                  <span className="absolute -top-1 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full align-super">
+                    {item.notificationCount}
+                  </span>
+                }
               </div>
               {isOpen && <span className="flex-1 ml-3">{item.name}</span>}
               {isOpen && item.isBeta && 

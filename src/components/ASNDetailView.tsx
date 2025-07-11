@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ASN, User, FeeStatus } from '@/types';
 import { CloseIcon, CurrencyDollarIcon, CheckBadgeIcon, ShipmentIcon } from '@/constants';
 import { useNavigate } from 'react-router-dom';
+import { inventoryService } from '@/services/inventoryService';
 
 interface ASNDetailViewProps {
   asn: ASN; 
@@ -18,6 +19,24 @@ interface ASNDetailViewProps {
 
 const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnterFees, onApproveFees, onConfirmPayment, onConfirmArrival, onConfirmProcessed, onConfirmReceived, onCompleteShipment }) => {
     const navigate = useNavigate();
+    const [inventoryTotals, setInventoryTotals] = useState<Record<number, number>>({});
+
+    useEffect(() => {
+        const fetchTotals = async () => {
+            if (asn.items && asn.items.length > 0) {
+                const inventory = await inventoryService.getInventoryItems();
+                const totals: Record<number, number> = {};
+                asn.items.forEach(item => {
+                    if (item.inventoryItemId) {
+                        const inv = inventory.find(i => i.id === item.inventoryItemId);
+                        if (inv) totals[item.inventoryItemId] = inv.quantity;
+                    }
+                });
+                setInventoryTotals(totals);
+            }
+        };
+        fetchTotals();
+    }, [asn.items]);
     
     const getFeeStatusBadge = (status?: FeeStatus) => {
         if (!status) return null;
@@ -38,9 +57,9 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
         const helperTextClasses = "text-xs text-secondary-500 dark:text-secondary-400 text-center mt-1";
 
         // New: Complete Shipment logic
-        const canCompleteShipment = user && ['Warehouse', 'admin', 'manager', 'Manager', 'Admin', 'Warehouse'].includes(user.role) && asn.items && asn.items.length > 0 && (asn.status === 'Arrived' || asn.status === 'Processing');
-        if (asn.status === 'Added to Stock') {
-            return <p className="text-xs text-center text-teal-600 dark:text-teal-400 font-semibold">✅ Shipment completed and added to stock.</p>;
+        const canCompleteShipment = user && ['Warehouse', 'admin', 'manager', 'Manager', 'Admin', 'Warehouse'].includes(user.role) && asn.items && asn.items.length > 0 && (asn.status === 'Processing' || asn.status === 'Discrepancy Review');
+        if (asn.status === 'Complete') {
+            return <p className="text-xs text-center text-teal-600 dark:text-teal-400 font-semibold">✅ Shipment completed.</p>;
         }
         if (canCompleteShipment && onCompleteShipment) {
             return (
@@ -48,7 +67,7 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                     onClick={() => onCompleteShipment(asn)}
                     className={`${commonButtonClasses} bg-teal-600 hover:bg-teal-700 text-white`}
                 >
-                    <CheckBadgeIcon className="h-5 w-5 mr-2" /> Complete Shipment
+                    <CheckBadgeIcon className="h-5 w-5 mr-2" /> Mark as Complete
                 </button>
             );
         }
@@ -116,66 +135,71 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                 );
                 
             case FeeStatus.PaymentConfirmed:
-                // If status is Processing, it means there were discrepancies that need review
-                if (asn.status === 'Processing') {
-                    const canWarehouseConfirm = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
+                // If status is 'At the Warehouse', warehouse can begin processing
+                if (asn.status === 'At the Warehouse') {
+                    const canWarehouseProcess = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
                     return (
                         <div>
-                            <div className="mb-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md">
-                                <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                                    ⚠️ Discrepancies found during receiving. Review and confirm items.
-                                </p>
-                            </div>
+                            <button
+                                onClick={() => navigate(`/inventory?asnId=${asn.id}`)}
+                                disabled={!canWarehouseProcess}
+                                className={`${commonButtonClasses} bg-blue-500 hover:bg-blue-600 text-white`}
+                            >
+                                <ShipmentIcon className="h-5 w-5 mr-2" /> Begin Processing
+                            </button>
+                            {!canWarehouseProcess && <p className={helperTextClasses}>Waiting for Warehouse team to begin processing.</p>}
+                        </div>
+                    );
+                }
+                // If status is 'Processing', warehouse can add items to inventory or move to discrepancy review
+                if (asn.status === 'Processing') {
+                    const canWarehouseDiscrepancy = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
+                    return (
+                        <div>
                             <button
                                 onClick={() => onConfirmReceived?.(asn)}
-                                disabled={!canWarehouseConfirm}
+                                disabled={!canWarehouseDiscrepancy}
                                 className={`${commonButtonClasses} bg-orange-500 hover:bg-orange-600 text-white`}
                             >
-                                <ShipmentIcon className="h-5 w-5 mr-2" /> Review & Confirm
+                                <ShipmentIcon className="h-5 w-5 mr-2" /> Move to Discrepancy Review
                             </button>
-                            {!canWarehouseConfirm && <p className={helperTextClasses}>Waiting for Warehouse team to review discrepancies.</p>}
+                            {!canWarehouseDiscrepancy && <p className={helperTextClasses}>Processing in progress. Move to discrepancy review if needed.</p>}
                         </div>
                     );
                 }
-                
-                // If status is Arrived, shipment is complete
-                if (asn.status === 'Arrived') {
+                // If status is 'Discrepancy Review', warehouse can resolve and return to processing or complete
+                if (asn.status === 'Discrepancy Review') {
+                    const canWarehouseResolve = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
                     return (
                         <div>
-                            <p className="text-xs text-center text-green-600 dark:text-green-400 mb-2">
-                                ✅ Shipment received and processed successfully
-                            </p>
-                            {user?.role === 'Warehouse' && onConfirmProcessed && (
-                                <button
-                                    onClick={() => onConfirmProcessed(asn)}
-                                    className={`${commonButtonClasses} bg-teal-500 hover:bg-teal-600 text-white`}
-                                >
-                                    <CheckBadgeIcon className="h-5 w-5 mr-2" /> Mark as Processed
-                                </button>
-                            )}
+                            <button
+                                onClick={() => onConfirmProcessed?.(asn)}
+                                disabled={!canWarehouseResolve}
+                                className={`${commonButtonClasses} bg-teal-500 hover:bg-teal-600 text-white`}
+                            >
+                                <CheckBadgeIcon className="h-5 w-5 mr-2" /> Resolve & Return to Processing
+                            </button>
+                            {!canWarehouseResolve && <p className={helperTextClasses}>Resolve discrepancies to continue processing or complete.</p>}
                         </div>
                     );
                 }
-                
-                // If status is Processed, shipment is fully complete
-                if (asn.status === 'Processed') {
-                    return <p className="text-xs text-center text-green-600 dark:text-green-400">✅ Shipment fully processed and complete.</p>;
+                // Default: After payment confirmed, warehouse marks as 'At the Warehouse'
+                const canWarehouseMarkAtWarehouse = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
+                if (asn.status === 'On Time' || asn.status === 'Delayed') {
+                    return (
+                        <div>
+                            <button
+                                onClick={() => onConfirmArrival(asn)}
+                                disabled={!canWarehouseMarkAtWarehouse}
+                                className={`${commonButtonClasses} bg-indigo-500 hover:bg-indigo-600 text-white`}
+                            >
+                                <ShipmentIcon className="h-5 w-5 mr-2" /> Mark as At the Warehouse
+                            </button>
+                            {!canWarehouseMarkAtWarehouse && <p className={helperTextClasses}>Waiting for Warehouse team to mark as at the warehouse.</p>}
+                        </div>
+                    );
                 }
-                
-                // Default: Payment confirmed, ready to receive
-                const canWarehouseReceive = user && ['Warehouse', 'admin', 'manager'].includes(user.role);
-                return (
-                     <div>
-                        <button
-                            onClick={() => navigate(`/inventory?asnId=${asn.id}`)}
-                            disabled={!canWarehouseReceive}
-                            className={`${commonButtonClasses} bg-blue-500 hover:bg-blue-600 text-white`}
-                        >
-                            <ShipmentIcon className="h-5 w-5 mr-2" /> Receive Items
-                        </button>
-                        {!canWarehouseReceive && <p className={helperTextClasses}>Cleared for receiving. Waiting for Warehouse team to process items.</p>}
-                    </div>
-                );
+                return <p className={helperTextClasses}>Awaiting warehouse action.</p>;
 
             default:
                 return <p className={helperTextClasses}>No pending financial actions for this shipment.</p>;
@@ -254,6 +278,11 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                                     {item.itemSku && (
                                         <p className="text-xs text-secondary-600 dark:text-secondary-400 mb-1">
                                             SKU: {item.itemSku}
+                                        </p>
+                                    )}
+                                    {typeof item.inventoryItemId === 'number' && inventoryTotals[item.inventoryItemId] !== undefined && (
+                                        <p className="text-xs text-secondary-700 dark:text-secondary-200 mb-1">
+                                            New Total in Stock: <span className="font-semibold">{inventoryTotals[item.inventoryItemId]}</span>
                                         </p>
                                     )}
                                     {item.newSerials && item.newSerials.length > 0 && (

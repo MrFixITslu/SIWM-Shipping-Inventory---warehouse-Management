@@ -9,7 +9,7 @@ import { InventoryProvider } from '@/contexts/InventoryContext';
 import { VendorProvider } from '@/contexts/VendorContext';
 import { AssetProvider } from '@/contexts/AssetContext'; // New
 import ProtectedRoute from '@/components/ProtectedRoute';
-import ErrorBoundary from '@/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ALL_NAV_ITEMS } from '@/constants';
 import AccessDeniedPage from '@/pages/AccessDeniedPage';
 import { initializeServiceWorker } from '@/utils/serviceWorker';
@@ -22,11 +22,13 @@ const InventoryManagementPage = React.lazy(() => import('@/pages/InventoryManage
 const WarehouseOrdersPage = React.lazy(() => import('@/pages/WarehouseOrdersPage'));
 const DispatchLogisticsPage = React.lazy(() => import('@/pages/DispatchLogisticsPage'));
 const VendorManagementPage = React.lazy(() => import('@/pages/VendorManagementPage'));
+const WarehouseManagementPage = React.lazy(() => import('@/pages/WarehouseManagementPage'));
 const ReportingPage = React.lazy(() => import('@/pages/ReportingPage'));
 const NotificationsPage = React.lazy(() => import('@/pages/NotificationsPage'));
 const AssetManagementPage = React.lazy(() => import('@/pages/AssetManagementPage'));
 const MasterDataPage = React.lazy(() => import('@/pages/MasterDataPage'));
 const UserManagementPage = React.lazy(() => import('@/pages/UserManagementPage'));
+const CustomerSupportPage = React.lazy(() => import('@/pages/CustomerSupportPage'));
 const HelpPage = React.lazy(() => import('@/pages/HelpPage'));
 const CompliancePage = React.lazy(() => import('@/pages/CompliancePage'));
 
@@ -94,32 +96,34 @@ const MainApp: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route 
               element={
-                  <ProtectedRoute>
-                    <InventoryProvider>
-                      <VendorProvider>
-                        <AssetProvider>
-                          <AppLayout />
-                        </AssetProvider>
-                      </VendorProvider>
-                    </InventoryProvider>
-                  </ProtectedRoute>
+                <ProtectedRoute>
+                  <InventoryProvider>
+                    <VendorProvider>
+                      <AssetProvider>
+                        <AppLayout />
+                      </AssetProvider>
+                    </VendorProvider>
+                  </InventoryProvider>
+                </ProtectedRoute>
               } 
             >
               {/* Nested routes are now protected and will render inside AppLayout's <Outlet /> */}
               <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="incoming-shipments" element={<IncomingShipmentsPage />} />
-              <Route path="inventory" element={<InventoryManagementPage />} />
-              <Route path="orders" element={<WarehouseOrdersPage />} />
-              <Route path="dispatch" element={<DispatchLogisticsPage />} />
-              <Route path="vendors" element={<VendorManagementPage />} />
-              <Route path="reports" element={<ReportingPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="assets" element={<AssetManagementPage />} />
-              <Route path="compliance" element={<CompliancePage />} />
-              <Route path="master-data" element={<MasterDataPage />} />
-              <Route path="user-management" element={<UserManagementPage />} />
-              <Route path="help" element={<HelpPage />} />
+              <Route path="dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+              <Route path="incoming-shipments" element={<ProtectedRoute><IncomingShipmentsPage /></ProtectedRoute>} />
+              <Route path="inventory" element={<ProtectedRoute><InventoryManagementPage /></ProtectedRoute>} />
+              <Route path="orders" element={<ProtectedRoute><WarehouseOrdersPage /></ProtectedRoute>} />
+              <Route path="dispatch" element={<ProtectedRoute><DispatchLogisticsPage /></ProtectedRoute>} />
+              <Route path="warehouse-management" element={<ProtectedRoute><WarehouseManagementPage /></ProtectedRoute>} />
+              <Route path="vendors" element={<ProtectedRoute><VendorManagementPage /></ProtectedRoute>} />
+              <Route path="reports" element={<ProtectedRoute><ReportingPage /></ProtectedRoute>} />
+              <Route path="notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+              <Route path="assets" element={<ProtectedRoute><AssetManagementPage /></ProtectedRoute>} />
+              <Route path="compliance" element={<ProtectedRoute><CompliancePage /></ProtectedRoute>} />
+              <Route path="master-data" element={<ProtectedRoute><MasterDataPage /></ProtectedRoute>} />
+              <Route path="user-management" element={<ProtectedRoute><UserManagementPage /></ProtectedRoute>} />
+              <Route path="customer-support" element={<ProtectedRoute><CustomerSupportPage /></ProtectedRoute>} />
+              <Route path="help" element={<ProtectedRoute><HelpPage /></ProtectedRoute>} />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Routes>

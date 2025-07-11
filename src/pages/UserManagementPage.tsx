@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import PageContainer from '@/components/PageContainer';
 import ErrorMessage from '@/components/ErrorMessage';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types';
 import { PlusIcon } from '@/constants';
 import { userService } from '@/services/userService';

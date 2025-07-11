@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NavItem } from '@/types';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { dashboardService } from '@/services/dashboardService';
 import { ALL_NAV_ITEMS } from '@/constants';

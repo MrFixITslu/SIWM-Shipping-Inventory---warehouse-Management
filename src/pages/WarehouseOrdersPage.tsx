@@ -6,7 +6,7 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import ErrorMessage from '@/components/ErrorMessage';
 import useConfirmationModal from '@/hooks/useConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { WarehouseOrder, OrderItem, OrderStatus, ColumnDefinition, UserSummary, AlertSeverity } from '@/types';
 import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, SerialIcon, CheckBadgeIcon } from '@/constants';

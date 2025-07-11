@@ -14,13 +14,15 @@ import ASNDetailView from '@/components/ASNDetailView';
 import useConfirmationModal from '@/hooks/useConfirmationModal';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 import { ASN, ColumnDefinition, Vendor, UserSummary, FeeStatus } from '@/types';
-import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, ShipmentIcon } from '@/constants';
+import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, ShipmentIcon, ChevronDownIcon } from '@/constants';
+import { ChevronRightIcon } from '@heroicons/react/24/solid';
 import { asnService } from '@/services/asnService';
 import { vendorService } from '@/services/vendorService';
 import { userService } from '@/services/userService';
 import { aiInsightService } from '@/services/aiInsightService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
+import { inventoryService } from '@/services/inventoryService';
 
 const TAILWIND_INPUT_CLASSES = "shadow-sm appearance-none border border-secondary-300 bg-white text-secondary-900 rounded-md px-3 py-2 dark:border-secondary-600 dark:bg-secondary-700 dark:text-secondary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm";
 const departmentOptions = ["Digicel+", "Digicel Business", "Commercial", "Marketing", "Outside Plant (OSP)", "Field Force & HVAC"];
@@ -54,6 +56,20 @@ const IncomingShipmentsPage: React.FC = () => {
   const [highlightedRow, setHighlightedRow] = useState<number | null>(null);
 
   const modalContentRef = useRef<HTMLDivElement>(null);
+
+  const [inventoryMap, setInventoryMap] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    const fetchInventory = async () => {
+      const inventory = await inventoryService.getInventoryItems();
+      const map: Record<number, string> = {};
+      inventory.forEach(item => {
+        map[item.id] = item.location;
+      });
+      setInventoryMap(map);
+    };
+    fetchInventory();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -252,36 +268,21 @@ const IncomingShipmentsPage: React.FC = () => {
   // --- End of real-time updates ---
 
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const signal = controller.signal;
-
-    const fetchPrediction = async () => {
-      if (selectedAsn) {
-        setIsAiPredictionLoading(true);
-        setAiDelayPrediction(null);
-        try {
-          const prediction = await aiInsightService.getASNDelayPrediction(selectedAsn, signal);
-          if (!signal.aborted) {
-            setAiDelayPrediction(prediction);
-          }
-        } catch (predError: any) {
-          if (predError.name !== 'AbortError') {
-            setAiDelayPrediction(predError.message || "AI prediction failed.");
-          }
-        } finally {
-          if (!signal.aborted) {
-            setIsAiPredictionLoading(false);
-          }
-        }
+  // Add a handler to fetch AI Delay Prediction on button click
+  const handleAIDelayPrediction = async () => {
+    if (selectedAsn) {
+      setIsAiPredictionLoading(true);
+      setAiDelayPrediction(null);
+      try {
+        const prediction = await aiInsightService.getASNDelayPrediction(selectedAsn);
+        setAiDelayPrediction(prediction);
+      } catch (predError: any) {
+        setAiDelayPrediction(predError.message || "AI prediction failed.");
+      } finally {
+        setIsAiPredictionLoading(false);
       }
-    };
-    fetchPrediction();
-
-    return () => {
-      controller.abort();
-    };
-  }, [selectedAsn?.id]);
+    }
+  };
 
   const handleOpenModal = (asn?: ASN) => {
     setError(null);
@@ -361,14 +362,14 @@ const IncomingShipmentsPage: React.FC = () => {
 
   const getStatusBadge = (status: ASN['status']) => {
     const statusColors: Record<ASN['status'], string> = {
-      'On Time': 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200',
+      'On Time': 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
       'Delayed': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200',
-      'Arrived': 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
+      'At the Warehouse': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-700 dark:text-indigo-200',
       'Processing': 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-200',
-      'Processed': 'bg-teal-100 text-teal-800 dark:bg-teal-700 dark:text-teal-200',
-      'Added to Stock': 'bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100',
+      'Discrepancy Review': 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200',
+      'Complete': 'bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100',
     };
-    const label = status === 'Arrived' ? 'In Warehouse' : status;
+    const label = status;
     return <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[status]}`}>{label}</span>;
   };
 
@@ -386,10 +387,10 @@ const IncomingShipmentsPage: React.FC = () => {
   
   const tableActions = (item: ASN) => (
     <div className="flex space-x-1">
-      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(item);}} className="text-primary-600 hover:text-primary-800 p-1" title="Edit Shipment" disabled={item.status === 'Processed'}>
+      <button onClick={(e) => { e.stopPropagation(); handleOpenModal(item);}} className="text-primary-600 hover:text-primary-800 p-1" title="Edit Shipment" disabled={item.status === 'Complete'}>
         <EditIcon className="h-5 w-5" />
       </button>
-      <button onClick={(e) => { e.stopPropagation(); handleDeleteAsn(item.id);}} className="text-red-600 hover:text-red-800 p-1" title="Delete Shipment" disabled={item.status === 'Processed'}>
+      <button onClick={(e) => { e.stopPropagation(); handleDeleteAsn(item.id);}} className="text-red-600 hover:text-red-800 p-1" title="Delete Shipment">
         <DeleteIcon className="h-5 w-5" />
       </button>
     </div>
@@ -431,9 +432,9 @@ const IncomingShipmentsPage: React.FC = () => {
   // Handler to confirm processed
   const handleConfirmProcessed = async (asn: ASN) => {
     try {
-      await asnService.updateASN(asn.id, { status: 'Processed' });
+      await asnService.updateASN(asn.id, { status: 'Complete' });
     } catch (err: any) {
-      setError(err.message || 'Failed to update status to Processed.');
+      setError(err.message || 'Failed to update status to Complete.');
     }
   };
   
@@ -452,10 +453,12 @@ const IncomingShipmentsPage: React.FC = () => {
     }
   };
 
-  // Filter for completed shipments (Added to Stock within 60 days)
+  // Filter for completed shipments (Complete within 30 days)
   const now = new Date();
-  const completedShipments = asns.filter(asn => asn.status === 'Added to Stock' && asn.completedAt && (now.getTime() - new Date(asn.completedAt).getTime()) < 60 * 24 * 60 * 60 * 1000);
-  const activeAsns = filteredAsns.filter(asn => asn.status !== 'Added to Stock' || !asn.completedAt || (now.getTime() - new Date(asn.completedAt).getTime()) >= 60 * 24 * 60 * 60 * 1000);
+  const completedShipments = asns.filter(asn => asn.status === 'Complete' && asn.completedAt && (now.getTime() - new Date(asn.completedAt).getTime()) < 30 * 24 * 60 * 60 * 1000);
+  const activeAsns = filteredAsns.filter(asn => asn.status !== 'Complete' || !asn.completedAt || (now.getTime() - new Date(asn.completedAt).getTime()) >= 30 * 24 * 60 * 60 * 1000);
+
+  const [showCompletedReport, setShowCompletedReport] = useState(false);
 
   if (isLoading && asns.length === 0) {
     return (
@@ -467,6 +470,25 @@ const IncomingShipmentsPage: React.FC = () => {
       </PageContainer>
     );
   }
+
+  // Define columns for completed shipments
+  type CompletedASNColumnKey = keyof ASN | 'itemsAndLocations';
+  // Change type to any to avoid linter error for custom key
+  const completedColumns: ColumnDefinition<any, any>[] = [
+    { key: 'poNumber', header: 'P.O. #', sortable: true },
+    { key: 'department', header: 'Department', sortable: true },
+    { key: 'createdAt', header: 'Arrival at Warehouse', sortable: true, render: (item) => item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A' },
+    { key: 'completedAt', header: 'Completed', sortable: true, render: (item) => item.completedAt ? new Date(item.completedAt).toLocaleDateString() : 'N/A' },
+    { key: 'itemsAndLocations', header: 'Items & Location', render: (item) => (
+      <ul className="text-xs">
+        {(item.items || []).map((itm: any, idx: number) => (
+          <li key={idx}>
+            {itm.itemName} ({itm.quantity}){typeof itm.inventoryItemId === 'number' && inventoryMap[itm.inventoryItemId] ? ` - ${inventoryMap[itm.inventoryItemId]}` : ''}
+          </li>
+        ))}
+      </ul>
+    ) },
+  ];
 
   return (
     <PageContainer
@@ -539,21 +561,19 @@ const IncomingShipmentsPage: React.FC = () => {
                     <h4 className="text-md font-semibold text-secondary-800 dark:text-secondary-200 mb-2 flex items-center">
                         <ShipmentIcon className="h-5 w-5 mr-2 text-purple-500" /> AI Delay Prediction
                     </h4>
-                    {isAiPredictionLoading ? (
-                        <div className="flex items-center">
-                            <LoadingSpinner className="w-4 h-4 mr-2" />
-                            <p className="text-sm text-secondary-500">Analyzing...</p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-secondary-700 dark:text-secondary-300">{aiDelayPrediction || "No prediction available."}</p>
+                    <button
+                        onClick={handleAIDelayPrediction}
+                        className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-md font-medium mb-2"
+                        disabled={isAiPredictionLoading}
+                    >
+                        {isAiPredictionLoading ? 'Generating...' : 'Generate AI Prediction'}
+                    </button>
+                    {aiDelayPrediction && (
+                        <p className="text-sm text-secondary-700 dark:text-secondary-300 mt-2">{aiDelayPrediction}</p>
                     )}
                 </div>
             </div>
-        ) : (
-            <div className="bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-                {/* Removed warning message about selectedAsn being null or undefined */}
-            </div>
-        )}
+        ) : null}
       </div>
       
       <Modal isOpen={isModalOpen} onClose={handleCloseModal} title={currentAsn.id ? 'Edit Shipment' : 'Add Incoming Shipment'} size="lg" contentRef={modalContentRef}>
@@ -658,18 +678,30 @@ const IncomingShipmentsPage: React.FC = () => {
         onConfirmComplete={fetchData}
       />
       
-      {completedShipments.length > 0 && (
-        <div className="mt-10">
-          <h3 className="text-lg font-semibold text-teal-700 dark:text-teal-300 mb-4">Completed Shipments (Last 60 Days)</h3>
+      {/* Completed Shipments Expandable Section */}
+      <div className="mt-10">
+        <button
+          className="flex items-center text-lg font-semibold text-teal-700 dark:text-teal-300 mb-4 focus:outline-none"
+          onClick={() => setShowCompletedReport((prev) => !prev)}
+          aria-expanded={showCompletedReport}
+        >
+          {showCompletedReport ? (
+            <ChevronDownIcon className="h-5 w-5 mr-2" />
+          ) : (
+            <ChevronRightIcon className="h-5 w-5 mr-2" />
+          )}
+          Completed Shipments (Last 30 Days)
+        </button>
+        {showCompletedReport && completedShipments.length > 0 && (
           <Table<ASN>
-            columns={columns}
+            columns={completedColumns as any}
             data={completedShipments}
             onRowClick={(asn) => setSelectedAsn(asn)}
-            actions={tableActions}
+            actions={undefined}
             rowClassName={(item) => highlightedRow === item.id ? 'animate-row-highlight' : ''}
           />
-        </div>
-      )}
+        )}
+      </div>
       
     </PageContainer>
   );

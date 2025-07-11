@@ -1,5 +1,8 @@
 // backend/controllers/dashboardController.js
 const dashboardServiceBackend = require('../services/dashboardServiceBackend');
+const { getSupportDashboardMetrics } = require('./supportController');
+const { getPool } = require('../config/db');
+const { mapToCamel } = require('../utils/dbMappers');
 
 const getMetrics = async (req, res, next) => {
     try {
@@ -86,14 +89,284 @@ const updateRunRate = async (req, res, next) => {
     }
 };
 
+const getWarehouseMetrics = async (req, res, next) => {
+    try {
+        const metrics = await dashboardServiceBackend.getWarehouseMetrics();
+        res.json(metrics);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getInventoryFlow = async (req, res, next) => {
+    try {
+        const flow = await dashboardServiceBackend.getInventoryFlowData();
+        res.json(flow);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getInventoryFlowChart = async (req, res, next) => {
+    try {
+        const flow = await dashboardServiceBackend.getInventoryFlowChart();
+        res.json(flow);
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getInventoryMovements = async (req, res) => {
+  try {
+    const { days = 7 } = req.query;
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT 
+        im.*,
+        ii.name as item_name,
+        ii.sku as item_sku,
+        u.name as performed_by_name
+      FROM inventory_movements im
+      JOIN inventory_items ii ON im.inventory_item_id = ii.id
+      LEFT JOIN users u ON im.performed_by = u.id
+      WHERE im.created_at >= CURRENT_DATE - INTERVAL '${days} days'
+      ORDER BY im.created_at DESC
+      LIMIT 50
+    `);
+    const movements = result.rows.map(mapToCamel);
+    res.json({ movements });
+  } catch (error) {
+    console.error('Error fetching inventory movements:', error);
+    res.status(500).json({ message: 'Failed to fetch inventory movements' });
+  }
+};
+
+const getOfflineStatus = (req, res) => {
+  res.json({ status: 'online' });
+};
+
+const getStockValueByDepartment = async (req, res, next) => {
+    try {
+        const stockData = await dashboardServiceBackend.getStockValueByDepartment();
+        res.json({ departments: stockData });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const getAgedInventory = async (req, res) => {
+  try {
+    console.log('getAgedInventory called');
+    const pool = getPool();
+    
+    // First, let's test if we can connect to the database
+    const testQuery = await pool.query('SELECT 1 as test');
+    console.log('Database connection test:', testQuery.rows[0]);
+    
+    // Check if inventory_items table exists
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'inventory_items'
+      ) as table_exists
+    `);
+    
+    console.log('Table exists check:', tableCheck.rows[0]);
+    
+    if (!tableCheck.rows[0].table_exists) {
+      res.json({ 
+        agedItems: [],
+        note: 'inventory_items table does not exist'
+      });
+      return;
+    }
+
+    // Check if required columns exist
+    const columnCheck = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'inventory_items' 
+      AND column_name IN ('id', 'name', 'sku', 'category', 'quantity', 'cost_price', 'location', 'entry_date', 'last_movement_date', 'is_aged')
+    `);
+    
+    console.log('Available columns:', columnCheck.rows.map(row => row.column_name));
+    
+    // Build query based on available columns
+    let query = `
+      SELECT 
+        id,
+        name,
+        sku,
+        COALESCE(category, 'Unassigned') as department,
+        quantity,
+        COALESCE(cost_price, 0) as cost_price,
+        (quantity * COALESCE(cost_price, 0)) as total_value,
+        location,
+        entry_date,
+        last_movement_date,
+        COALESCE(is_aged, false) as is_aged
+    `;
+
+    // Add age calculation if entry_date exists
+    if (columnCheck.rows.some(row => row.column_name === 'entry_date')) {
+      query += `,
+        CASE 
+          WHEN entry_date IS NOT NULL THEN 
+            EXTRACT(EPOCH FROM (CURRENT_DATE::timestamp - entry_date::timestamp)) / 86400
+          ELSE 0
+        END as age_in_days
+      `;
+    } else {
+      query += `, 0 as age_in_days`;
+    }
+
+    query += `
+      FROM inventory_items 
+      WHERE quantity > 0
+    `;
+
+    // Add aging filter if is_aged column exists
+    if (columnCheck.rows.some(row => row.column_name === 'is_aged')) {
+      query += `
+        AND (
+          is_aged = true 
+          OR (
+            entry_date IS NOT NULL 
+            AND entry_date < CURRENT_DATE - INTERVAL '365 days'
+          )
+        )
+      `;
+    } else {
+      // If is_aged column doesn't exist, only filter by entry_date
+      query += `
+        AND (
+          entry_date IS NOT NULL 
+          AND entry_date < CURRENT_DATE - INTERVAL '365 days'
+        )
+      `;
+    }
+
+    query += `
+      ORDER BY age_in_days DESC, entry_date ASC
+      LIMIT 100
+    `;
+    
+    console.log('Executing query:', query);
+    
+    const result = await pool.query(query);
+    
+    console.log('Aged items found in database:', result.rows.length);
+    
+    if (result.rows.length === 0) {
+      res.json({ 
+        agedItems: [],
+        note: 'No aged inventory items found in database'
+      });
+      return;
+    }
+    
+    // Process the results
+    const agedItems = result.rows.map(row => {
+      return {
+        id: row.id,
+        name: row.name,
+        sku: row.sku,
+        department: row.department,
+        quantity: parseInt(row.quantity),
+        ageInDays: Math.floor(parseFloat(row.age_in_days) || 0),
+        entryDate: row.entry_date,
+        lastMovementDate: row.last_movement_date,
+        costPrice: parseFloat(row.cost_price || 0),
+        totalValue: parseFloat(row.total_value || 0),
+        location: row.location,
+        isAged: row.is_aged
+      };
+    });
+    
+    console.log('Processed aged items:', agedItems.length);
+    
+    res.json({ agedItems });
+  } catch (error) {
+    console.error('Error fetching aged inventory:', error);
+    console.error('Error details:', error.message, error.stack);
+    
+    // Fallback: try to get basic inventory data
+    try {
+      console.log('Attempting fallback method...');
+      const pool = getPool();
+      const fallbackResult = await pool.query(`
+        SELECT 
+          id,
+          name,
+          sku,
+          COALESCE(category, 'Unassigned') as department,
+          quantity,
+          COALESCE(cost_price, 0) as cost_price,
+          (quantity * COALESCE(cost_price, 0)) as total_value,
+          location,
+          entry_date,
+          last_movement_date,
+          COALESCE(is_aged, false) as is_aged,
+          0 as age_in_days
+        FROM inventory_items 
+        WHERE quantity > 0
+        LIMIT 50
+      `);
+      
+      const fallbackItems = fallbackResult.rows.map(row => {
+        const entryDate = row.entry_date ? new Date(row.entry_date) : null;
+        const now = new Date();
+        const ageInDays = entryDate ? Math.floor((now.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+        
+        return {
+          id: row.id,
+          name: row.name,
+          sku: row.sku,
+          department: row.department,
+          quantity: parseInt(row.quantity),
+          ageInDays: ageInDays,
+          entryDate: row.entry_date,
+          lastMovementDate: row.last_movement_date,
+          costPrice: parseFloat(row.cost_price || 0),
+          totalValue: parseFloat(row.total_value || 0),
+          location: row.location,
+          isAged: row.is_aged
+        };
+      }).filter(item => item.isAged || item.ageInDays >= 365);
+      
+      console.log('Fallback method found', fallbackItems.length, 'aged items');
+      
+      res.json({ 
+        agedItems: fallbackItems,
+        note: 'Used fallback method due to database query error'
+      });
+    } catch (fallbackError) {
+      console.error('Fallback method also failed:', fallbackError);
+      res.status(500).json({ 
+        message: 'Failed to fetch aged inventory',
+        error: error.message,
+        fallbackError: fallbackError.message
+      });
+    }
+  }
+};
+
 module.exports = {
     getMetrics,
+    getWorkflowMetrics,
     getShipmentsChart,
     getOrderVolumeChart,
     getUnacknowledgedCount,
-    getWorkflowMetrics,
+    getWarehouseMetrics,
+    getInventoryFlow,
+    getInventoryFlowChart,
     getItemsBelowReorderPoint,
     getItemsAtRiskOfStockOut,
     getCurrentRunRate,
     updateRunRate,
+    getSupportDashboardMetrics,
+    getInventoryMovements,
+    getOfflineStatus,
+    getStockValueByDepartment,
+    getAgedInventory
 };

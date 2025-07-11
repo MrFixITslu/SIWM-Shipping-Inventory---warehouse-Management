@@ -13,7 +13,17 @@ A comprehensive, secure, and scalable web application for shipping, procurement,
 - **Procurement Insights**: Market trend analysis and cost optimization
 
 ### 📦 Core Logistics Features
-- **Incoming Shipments**: ASN processing and ETA tracking
+- **Incoming Shipments Workflow**:
+  - Create ASN (Advanced Shipping Notice) for each incoming shipment
+  - **Receive Items**: Add received inventory for a shipment
+  - **Return to Shipment**: After receiving, shipment status updates to "Arrived" or "Processing" (if discrepancies)
+  - **Complete Shipment**: Only Warehouse, Manager, or Admin can mark as "Added to Stock" (completion)
+  - **Completed Shipments Section**: Completed shipments remain visible for 60 days
+  - **Discrepancy Handling**: System detects and highlights discrepancies between expected and received items
+  - **Email Notification**: On completion, sends details and discrepancies to lc_procurement@digicel.com
+  - **Role-based Restrictions**: Only authorized roles can complete shipments
+  - **Real-time Updates**: UI updates instantly on status changes
+  - **Error Handling**: User-friendly errors for missing/invalid items or migration issues
 - **Inventory Management**: Real-time stock levels and smart intake
 - **Warehouse Orders**: Order processing and fulfillment
 - **Dispatch & Logistics**: Route planning and delivery management
@@ -31,6 +41,7 @@ A comprehensive, secure, and scalable web application for shipping, procurement,
 ### 📊 Analytics & Reporting
 - **Real-time Dashboard**: Live metrics and KPIs
 - **Advanced Reporting**: Custom report generation
+- **Incoming Shipments Report**: Review all incoming shipments by month/year, with status, items, and discrepancies
 - **Data Export**: PDF and CSV export capabilities
 - **Performance Monitoring**: System health tracking
 
@@ -344,6 +355,33 @@ For support and questions:
 - **WebSocket Integration**: Real-time updates
 - **Progressive Web App**: Offline capabilities
 - **Microservices Architecture**: Scalable backend design
+
+## 🚚 Incoming Shipments/ASN Workflow (User & Admin Guide)
+
+1. **Create ASN**: Add a new incoming shipment with all required details.
+2. **Receive Items**: On the Inventory page, add items received for the shipment. Items are tracked and summarized before submission.
+3. **Return to Shipment**: Submits received items to the backend, updates shipment status to "Arrived" or "Processing" (if discrepancies), and returns to the shipment detail view.
+4. **Complete Shipment**: If you have the Warehouse, Manager, or Admin role, and items have been received, you can mark the shipment as "Added to Stock". This triggers an email notification with details and discrepancies.
+5. **Completed Shipments**: Shipments marked as "Added to Stock" remain visible in a dedicated section for 60 days.
+6. **Reporting**: Use the Reporting page to review all incoming shipments by month/year, including status, items, and any discrepancies.
+
+**Note:** Only authorized roles can complete shipments. Discrepancies are highlighted and included in notifications.
+
+## 🛠️ Troubleshooting & Migration Notes
+
+- **Error: column "completed_at" of relation "asns" does not exist**
+  - This means the database migration to add the `completed_at` column was not applied.
+  - **Solution:** Run the migration:
+    ```sql
+    ALTER TABLE asns ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP NULL;
+    ```
+  - Always run database migrations after pulling updates or deploying new features.
+
+- **Real-time/Status Issues**
+  - If shipment status does not update after receiving, ensure the backend is called and the frontend refetches the latest ASN data.
+
+- **User Feedback**
+  - The UI now provides clear error messages if you try to complete a shipment without receiving items, or if items cannot be matched to inventory.
 
 ---
 
