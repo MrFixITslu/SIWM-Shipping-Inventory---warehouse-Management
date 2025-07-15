@@ -1,6 +1,5 @@
 // src/services/complianceService.ts
 // Placeholder for future compliance feature API calls
-import { api } from './apiHelper';
 
 // Example type, would be defined in types.ts
 interface ComplianceDocument {

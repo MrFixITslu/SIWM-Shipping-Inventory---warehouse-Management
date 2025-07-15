@@ -5,7 +5,7 @@ import Sidebar from '@/components/Sidebar';
 interface LayoutProps {
   children: React.ReactNode;
   isSidebarOpen: boolean;
-  setIsSidebarOpen: (isOpen: boolean) => void;
+  setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
 }

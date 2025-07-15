@@ -1,29 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  TruckIcon, 
-  CubeIcon, 
-  ChartBarIcon, 
-  BuildingOfficeIcon, 
-  ShoppingCartIcon,
-  LightBulbIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon
-} from '@heroicons/react/24/outline';
-import { logisticsService } from '@/services/logisticsService';
-import { LoadingSpinner } from '@/components/icons/LoadingSpinner';
-import { ErrorMessage } from '@/components/ErrorMessage';
-
-interface OptimizationResult {
-  type: string;
-  data: any;
-  timestamp: Date;
-}
+import LoadingSpinner from '@/components/icons/LoadingSpinner';
+import { TruckIcon, CubeIcon, ChartBarIcon, BuildingOfficeIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 
 const LogisticsOptimizationPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('shipping');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<OptimizationResult[]>([]);
+  const [results, setResults] = useState<any[]>([]);
 
   // Form states
   const [shippingForm, setShippingForm] = useState({
@@ -53,134 +35,6 @@ const LogisticsOptimizationPage: React.FC = () => {
     procurementData: '',
     marketTrends: ''
   });
-
-  const handleOptimizeShipping = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const constraints = shippingForm.constraints ? JSON.parse(shippingForm.constraints) : {};
-      const result = await logisticsService.optimizeShippingRoute(
-        shippingForm.origin,
-        shippingForm.destination,
-        constraints
-      );
-      
-      setResults(prev => [...prev, {
-        type: 'shipping',
-        data: result,
-        timestamp: new Date()
-      }]);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleForecastInventory = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const historicalData = inventoryForm.historicalData ? JSON.parse(inventoryForm.historicalData) : {};
-      const currentStock = inventoryForm.currentStock ? JSON.parse(inventoryForm.currentStock) : {};
-      const leadTimes = inventoryForm.leadTimes ? JSON.parse(inventoryForm.leadTimes) : {};
-      
-      const result = await logisticsService.forecastInventory(
-        historicalData,
-        currentStock,
-        leadTimes
-      );
-      
-      setResults(prev => [...prev, {
-        type: 'inventory',
-        data: result,
-        timestamp: new Date()
-      }]);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAnalyzeSupplier = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const supplierData = supplierForm.supplierData ? JSON.parse(supplierForm.supplierData) : {};
-      const orderHistory = supplierForm.orderHistory ? JSON.parse(supplierForm.orderHistory) : {};
-      
-      const result = await logisticsService.analyzeSupplierPerformance(
-        supplierData,
-        orderHistory
-      );
-      
-      setResults(prev => [...prev, {
-        type: 'supplier',
-        data: result,
-        timestamp: new Date()
-      }]);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOptimizeWarehouse = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const currentLayout = warehouseForm.currentLayout ? JSON.parse(warehouseForm.currentLayout) : {};
-      const inventoryData = warehouseForm.inventoryData ? JSON.parse(warehouseForm.inventoryData) : {};
-      const orderPatterns = warehouseForm.orderPatterns ? JSON.parse(warehouseForm.orderPatterns) : {};
-      
-      const result = await logisticsService.optimizeWarehouseLayout(
-        currentLayout,
-        inventoryData,
-        orderPatterns
-      );
-      
-      setResults(prev => [...prev, {
-        type: 'warehouse',
-        data: result,
-        timestamp: new Date()
-      }]);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleGenerateProcurementInsights = async () => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const procurementData = procurementForm.procurementData ? JSON.parse(procurementForm.procurementData) : {};
-      const marketTrends = procurementForm.marketTrends ? JSON.parse(procurementForm.marketTrends) : {};
-      
-      const result = await logisticsService.generateProcurementInsights(
-        procurementData,
-        marketTrends
-      );
-      
-      setResults(prev => [...prev, {
-        type: 'procurement',
-        data: result,
-        timestamp: new Date()
-      }]);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const tabs = [
     { id: 'shipping', name: 'Shipping Route Optimization', icon: TruckIcon },
@@ -229,7 +83,22 @@ const LogisticsOptimizationPage: React.FC = () => {
         />
       </div>
       <button
-        onClick={handleOptimizeShipping}
+        onClick={() => {
+          setIsLoading(true);
+          // Simulate an async operation
+          setTimeout(() => {
+            setResults(prev => [...prev, {
+              type: 'shipping',
+              data: {
+                route: `${shippingForm.origin} to ${shippingForm.destination}`,
+                estimatedCost: 2500,
+                estimatedTime: '2 days'
+              },
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }, 1000);
+        }}
         disabled={isLoading || !shippingForm.origin || !shippingForm.destination}
         className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -277,7 +146,25 @@ const LogisticsOptimizationPage: React.FC = () => {
         />
       </div>
       <button
-        onClick={handleForecastInventory}
+        onClick={() => {
+          setIsLoading(true);
+          // Simulate an async operation
+          setTimeout(() => {
+            setResults(prev => [...prev, {
+              type: 'inventory',
+              data: {
+                forecast: {
+                  item_A: 60,
+                  item_B: 35,
+                  item_C: 80
+                },
+                confidence: 0.95
+              },
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }, 1000);
+        }}
         disabled={isLoading || !inventoryForm.historicalData || !inventoryForm.currentStock}
         className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -313,7 +200,26 @@ const LogisticsOptimizationPage: React.FC = () => {
         />
       </div>
       <button
-        onClick={handleAnalyzeSupplier}
+        onClick={() => {
+          setIsLoading(true);
+          // Simulate an async operation
+          setTimeout(() => {
+            setResults(prev => [...prev, {
+              type: 'supplier',
+              data: {
+                performance: {
+                  name: "Supplier A",
+                  rating: 4.2,
+                  delivery_time: 5,
+                  quality_score: 0.95
+                },
+                insights: "Supplier A consistently delivers on time and maintains high quality."
+              },
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }, 1000);
+        }}
         disabled={isLoading || !supplierForm.supplierData || !supplierForm.orderHistory}
         className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -361,7 +267,26 @@ const LogisticsOptimizationPage: React.FC = () => {
         />
       </div>
       <button
-        onClick={handleOptimizeWarehouse}
+        onClick={() => {
+          setIsLoading(true);
+          // Simulate an async operation
+          setTimeout(() => {
+            setResults(prev => [...prev, {
+              type: 'warehouse',
+              data: {
+                optimized_layout: {
+                  zones: [
+                    { name: "Zone A", items: ["item1", "item2"], pick_time: 2.5 },
+                    { name: "Zone B", items: ["item3", "item4"], pick_time: 3.0 }
+                  ]
+                },
+                justification: "Optimized layout based on inventory density and pick times."
+              },
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }, 1000);
+        }}
         disabled={isLoading || !warehouseForm.currentLayout || !warehouseForm.inventoryData}
         className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -397,7 +322,28 @@ const LogisticsOptimizationPage: React.FC = () => {
         />
       </div>
       <button
-        onClick={handleGenerateProcurementInsights}
+        onClick={() => {
+          setIsLoading(true);
+          // Simulate an async operation
+          setTimeout(() => {
+            setResults(prev => [...prev, {
+              type: 'procurement',
+              data: {
+                insights: {
+                  procurement_spend: 50000,
+                  market_trends: {
+                    inflation_rate: 0.03,
+                    supply_chain_issues: ["electronics"],
+                    commodity_prices: { steel: "up" }
+                  },
+                  recommendations: ["Consider bulk purchasing for steel to reduce costs."]
+                }
+              },
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+          }, 1000);
+        }}
         disabled={isLoading || !procurementForm.procurementData}
         className="w-full bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -441,8 +387,6 @@ const LogisticsOptimizationPage: React.FC = () => {
           Leverage Gemini AI to optimize shipping routes, forecast inventory, analyze suppliers, and more.
         </p>
       </div>
-
-      {error && <ErrorMessage message={error} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Tabs */}

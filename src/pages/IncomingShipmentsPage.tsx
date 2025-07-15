@@ -472,8 +472,6 @@ const IncomingShipmentsPage: React.FC = () => {
   }
 
   // Define columns for completed shipments
-  type CompletedASNColumnKey = keyof ASN | 'itemsAndLocations';
-  // Change type to any to avoid linter error for custom key
   const completedColumns: ColumnDefinition<any, any>[] = [
     { key: 'poNumber', header: 'P.O. #', sortable: true },
     { key: 'department', header: 'Department', sortable: true },

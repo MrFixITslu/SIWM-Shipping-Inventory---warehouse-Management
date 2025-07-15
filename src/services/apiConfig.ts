@@ -19,7 +19,6 @@ function getApiBaseUrl(): string {
   // For development, detect if we're accessing from a remote device
   if (typeof window !== 'undefined') {
     const currentHost = window.location.hostname;
-    const currentPort = window.location.port;
     
     // If accessing from a remote IP (not localhost), use the same IP for backend
     if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {

@@ -4,14 +4,12 @@ import Table from '@/components/Table';
 import Modal from '@/components/Modal';
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
-import { SupportTicket, SupportTicketResponse, User, ColumnDefinition } from '@/types';
+import { SupportTicket, ColumnDefinition } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   PlusIcon, 
-  ChatIcon, 
-  BuildingOfficeIcon
+  ChatIcon
 } from '@/constants';
-import { WarningIcon, SuccessIcon, UserCircleIcon } from '@/constants/icons';
 
 interface CustomerSupportPageProps {}
 
@@ -159,14 +157,14 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
     setError(null);
     try {
       // This would be replaced with actual API call
-      const newResponseData: SupportTicketResponse = {
-        id: Math.random(),
-        ticket_id: selectedTicket.id,
-        user_id: user?.id,
-        message: newResponse.message,
-        is_internal: newResponse.is_internal,
-        created_at: new Date().toISOString()
-      };
+      // const newResponseData: SupportTicketResponse = {
+      //   id: Math.random(),
+      //   ticket_id: selectedTicket.id,
+      //   user_id: user?.id,
+      //   message: newResponse.message,
+      //   is_internal: newResponse.is_internal,
+      //   created_at: new Date().toISOString()
+      // };
 
       // Update ticket status if response is from assigned user
       const updatedTicket = {

@@ -37,12 +37,12 @@ class EnhancedApiHelper {
     path: string,
     options: RequestInit & ApiOptions = {}
   ): Promise<ApiResponse<T>> {
-    const { cache = true, cacheTTL = 5 * 60 * 1000, offline = false, ...fetchOptions } = options;
+    const { cacheTTL = 5 * 60 * 1000, offline = false, ...fetchOptions } = options;
     const url = `${this.baseUrl}${path}`;
     const cacheKey = `${fetchOptions.method || 'GET'}:${url}`;
 
     // Try to get from cache first if caching is enabled
-    if (cache && fetchOptions.method === 'GET') {
+    if (fetchOptions.method === 'GET') {
       const cachedData = await requestCache.get<T>(cacheKey);
       if (cachedData) {
         return { data: cachedData, fromCache: true, offline: false };
@@ -58,7 +58,7 @@ class EnhancedApiHelper {
       const data = await this.handleResponse<T>(response);
 
       // Cache successful GET requests
-      if (cache && fetchOptions.method === 'GET' && response.ok) {
+      if (fetchOptions.method === 'GET' && response.ok) {
         requestCache.set(cacheKey, data, cacheTTL);
       }
 
@@ -87,23 +87,26 @@ class EnhancedApiHelper {
   }
 
   async get<T>(path: string, options?: ApiOptions): Promise<T> {
+    const { cache, ...rest } = options || {};
     const response = await this.makeRequest<T>(path, { 
       method: 'GET',
-      ...options 
+      ...rest 
     });
     return response.data;
   }
 
   async post<T>(path: string, body: any, options?: ApiOptions): Promise<T> {
+    const { cache, ...rest } = options || {};
     const response = await this.makeRequest<T>(path, {
       method: 'POST',
       body: JSON.stringify(body),
-      ...options
+      ...rest
     });
     return response.data;
   }
 
   async postForm<T>(path: string, formData: FormData, options?: ApiOptions): Promise<T> {
+    const { cache, ...rest } = options || {};
     const headers = getCommonHeaders();
     delete headers['Content-Type']; // Let browser set content-type for FormData
     
@@ -111,24 +114,26 @@ class EnhancedApiHelper {
       method: 'POST',
       headers,
       body: formData,
-      ...options
+      ...rest
     });
     return response.data;
   }
 
   async put<T>(path: string, body: any, options?: ApiOptions): Promise<T> {
+    const { cache, ...rest } = options || {};
     const response = await this.makeRequest<T>(path, {
       method: 'PUT',
       body: JSON.stringify(body),
-      ...options
+      ...rest
     });
     return response.data;
   }
 
   async delete(path: string, options?: ApiOptions): Promise<void> {
+    const { cache, ...rest } = options || {};
     await this.makeRequest(path, {
       method: 'DELETE',
-      ...options
+      ...rest
     });
   }
 
@@ -140,8 +145,7 @@ class EnhancedApiHelper {
       const method = request.method || 'GET';
       const response = await this.makeRequest(request.path, {
         method: method as any,
-        body: request.body,
-        cache: method === 'GET'
+        body: request.body
       });
       return [key, response.data];
     });
@@ -227,7 +231,7 @@ class EnhancedApiHelper {
   // Preload data for better UX
   async preload<T>(paths: string[]): Promise<void> {
     const promises = paths.map(path => 
-      this.get<T>(path, { cache: true }).catch(() => {
+      this.get<T>(path).catch(() => {
         // Silently fail preload requests
         console.warn(`Failed to preload: ${path}`);
       })

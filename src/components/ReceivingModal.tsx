@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/Modal';
+import BarcodeScanner from './BarcodeScanner';
 import { ASN, ReceivedItem } from '@/types';
 import { useInventory } from '@/hooks/useInventory';
 import { asnService } from '@/services/asnService';
 import LoadingSpinner from './icons/LoadingSpinner';
-import { SerialIcon, UploadIcon } from '@/constants';
-import { geminiService } from '@/services/geminiService';
-import Papa from 'papaparse';
 
 
 interface ReceivingModalProps {
@@ -40,8 +38,9 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
     const [error, setError] = useState<string | null>(null);
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const modalContentRef = useRef<HTMLDivElement>(null);
-    const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const [itemStatuses, setItemStatuses] = useState<Record<number, ItemStatus>>({});
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [scanningForItemIndex, setScanningForItemIndex] = useState<number | null>(null);
 
     useEffect(() => {
         if (isOpen && shipment && Object.keys(inventoryMap).length > 0) {
@@ -94,50 +93,20 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
         setReceivingItems(newItems);
     };
 
-    const parseCsv = (file: File): Promise<string[]> => {
-        return new Promise((resolve, reject) => {
-            Papa.parse(file, {
-                complete: (results) => {
-                    const serials = results.data.flat().map((s: any) => String(s || '').trim()).filter(Boolean);
-                    resolve(serials);
-                },
-                error: (error: any) => reject(new Error(`CSV parsing error: ${error.message}`)),
-            });
-        });
-    };
-
-    const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        const currentItem = receivingItems[index];
-        const itemId = currentItem.itemId;
-        setItemStatuses(prev => ({ ...prev, [itemId]: { isLoading: true, error: null } }));
-
-        try {
-            let serials: string[] = [];
-            if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
-                serials = await parseCsv(file);
-            } else if (file.type === 'application/pdf') {
-                serials = await geminiService.extractTextFromPdf(file);
-            } else {
-                throw new Error('Unsupported file type. Please upload a .csv or .pdf file.');
-            }
-
-            if (serials.length !== currentItem.expectedQuantity) {
-                throw new Error(`Quantity mismatch. Expected ${currentItem.expectedQuantity}, but file contains ${serials.length} serials.`);
-            }
-            
-            handleItemChange(index, 'receivedSerials', serials.join('\n'));
-
-        } catch (err: any) {
-            setItemStatuses(prev => ({ ...prev, [itemId]: { isLoading: false, error: err.message } }));
-        } finally {
-            setItemStatuses(prev => ({ ...prev, [itemId]: { ...prev[itemId], isLoading: false } }));
-            if (event.target) event.target.value = '';
+    const handleScan = (result: string) => {
+        if (scanningForItemIndex !== null) {
+            const currentSerials = receivingItems[scanningForItemIndex].receivedSerials;
+            const newSerials = currentSerials ? `${currentSerials}\n${result}` : result;
+            handleItemChange(scanningForItemIndex, 'receivedSerials', newSerials);
+            setScanningForItemIndex(null);
+            setIsScannerOpen(false);
         }
     };
 
+    const handleStartScan = (index: number) => {
+        setScanningForItemIndex(index);
+        setIsScannerOpen(true);
+    };
 
     const handleReceive = async () => {
         setIsSaving(true);
@@ -206,9 +175,21 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                             
                             {item.isSerialized ? (
                                 <div className="mt-3">
-                                    <label htmlFor={`serials-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
-                                        Serial Numbers ({item.receivedQuantity} received)
-                                    </label>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label htmlFor={`serials-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
+                                            Serial Numbers ({item.receivedQuantity} received)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStartScan(index)}
+                                            className="flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors"
+                                        >
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
+                                            </svg>
+                                            Scan
+                                        </button>
+                                    </div>
                                     <textarea
                                         id={`serials-${item.itemId}`}
                                         rows={3}
@@ -255,6 +236,17 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                     </button>
                 </div>
             </div>
+
+            {/* Barcode Scanner */}
+            <BarcodeScanner
+                isOpen={isScannerOpen}
+                onScan={handleScan}
+                onClose={() => {
+                    setIsScannerOpen(false);
+                    setScanningForItemIndex(null);
+                }}
+                title="Scan Serial Number"
+            />
         </Modal>
     );
 };

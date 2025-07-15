@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Table from '@/components/Table';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import UserAuditLogModal from './UserAuditLogModal';
-import { User, ColumnDefinition, UserRole } from '@/types';
+import { User, ColumnDefinition } from '@/types';
 import { userService } from '@/services/userService';
 import { USER_GROUPS } from '@/constants/permissions';
 import { EditIcon, CheckBadgeIcon, XCircleIcon, ClockIcon } from '@/constants';

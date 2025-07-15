@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import PageContainer from '@/components/PageContainer';
 import ReportCard from '@/components/ReportCard';
 import ReportViewerModal from '@/components/ReportViewerModal';
@@ -205,10 +205,10 @@ const ReportingPage: React.FC = () => {
               const statusColors: Record<ASN['status'], string> = {
                 'On Time': 'bg-green-100 text-green-800 dark:bg-green-700 dark:text-green-200',
                 'Delayed': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-200',
-                'Arrived': 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
-                'Processing': 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-200',
-                'Processed': 'bg-teal-100 text-teal-800 dark:bg-teal-700 dark:text-teal-200',
-                'Added to Stock': 'bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100',
+                'At the Warehouse': 'bg-purple-100 text-purple-800 dark:bg-purple-700 dark:text-purple-200',
+                'Processing': 'bg-teal-200 text-teal-900 dark:bg-teal-800 dark:text-teal-100',
+                'Discrepancy Review': 'bg-red-100 text-red-800 dark:bg-red-700 dark:text-red-200',
+                'Complete': 'bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-200',
               };
               return <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColors[item.status]}`}>{item.status}</span>;
             } },

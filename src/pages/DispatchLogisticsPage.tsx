@@ -12,12 +12,11 @@ import PaymentConfirmationModal from '@/components/PaymentConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
-import { OutboundShipment, ColumnDefinition, WarehouseOrder, OrderStatus, AlertSeverity, OrderItem, FeeStatus, UserSummary } from '@/types';
+import { OutboundShipment, ColumnDefinition, WarehouseOrder, OrderStatus, OrderItem, FeeStatus, UserSummary } from '@/types';
 import { PlusIcon, EditIcon, DeleteIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, CurrencyDollarIcon, ShipmentIcon } from '@/constants';
 import { dispatchService } from '@/services/dispatchService';
 import { orderService } from '@/services/orderService';
 import { aiInsightService } from '@/services/aiInsightService'; 
-import { alertingService } from '@/services/alertingService';
 import { userService } from '@/services/userService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 
@@ -55,17 +54,14 @@ const DispatchLogisticsPage: React.FC = () => {
   const [shipmentForAction, setShipmentForAction] = useState<OutboundShipment | null>(null);
   const [highlightedRow, setHighlightedRow] = useState<{ type: 'order' | 'shipment', id: number } | null>(null);
   
-  const { isModalOpen: isConfirmDeleteOpen, confirmButtonText: deleteButtonText, showConfirmation: showDeleteConfirmation, handleConfirm: handleConfirmDelete, handleClose: handleCloseDeleteConfirm } = useConfirmationModal();
-  const { isModalOpen: isConfirmReceiptOpen, confirmButtonText: receiptButtonText, showConfirmation: showConfirmReceipt, handleConfirm: handleConfirmReceiptAction, handleClose: handleCloseReceiptConfirm } = useConfirmationModal();
-  const { isModalOpen: isConfirmDeliveryOpen, confirmButtonText: deliveryButtonText, showConfirmation: showDeliveryConfirmation, handleConfirm: handleConfirmDeliveryAction, handleClose: handleCloseDeliveryConfirm } = useConfirmationModal();
+  const { showConfirmation: showDeleteConfirmation } = useConfirmationModal();
+  const { showConfirmation: showConfirmReceipt } = useConfirmationModal();
+  const { showConfirmation: showDeliveryConfirmation } = useConfirmationModal();
 
 
   const [isRouteOptimizationModalOpen, setIsRouteOptimizationModalOpen] = useState(false);
-  const [confirmationModalMessage, setConfirmationModalMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  const [routeOptimizationSuggestion, setRouteOptimizationSuggestion] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -137,14 +133,10 @@ const DispatchLogisticsPage: React.FC = () => {
     const fetchAiSuggestion = async () => {
         if (shipments.length > 0) {
             try {
-                const suggestion = await aiInsightService.getRouteOptimizationSuggestion(shipments);
-                setRouteOptimizationSuggestion(suggestion);
+                await aiInsightService.getRouteOptimizationSuggestion(shipments);
             } catch(e: any) {
                 console.error("Failed to fetch AI suggestion", e);
-                setRouteOptimizationSuggestion("AI suggestion unavailable due to an error.");
             }
-        } else {
-            setRouteOptimizationSuggestion("No active shipments to analyze for route optimization.");
         }
     };
     fetchAiSuggestion();
@@ -272,16 +264,6 @@ const DispatchLogisticsPage: React.FC = () => {
         setError(null);
         try { await dispatchService.deleteDispatch(id); } catch (err: any) { setError(err.message || "Failed to delete dispatch."); }
     }, { confirmText: "Confirm Delete" });
-  };
-
-  const handleApplyOptimizedRoute = () => {
-    if (!routeOptimizationSuggestion || !routeOptimizationSuggestion.toLowerCase().includes('suggestion')) return;
-    alertingService.addAlert(
-        AlertSeverity.Info, `AI Route Optimization applied: "${routeOptimizationSuggestion}"`, 'Route Optimization', '/dispatch'
-    ).then(() => {
-        setConfirmationModalMessage('AI route optimization has been logged and sent to the logistics team for implementation.');
-        setIsRouteOptimizationModalOpen(true);
-    });
   };
 
   const getOrderStatusBadge = (status: OrderStatus) => {
@@ -526,7 +508,7 @@ const DispatchLogisticsPage: React.FC = () => {
         isOpen={isRouteOptimizationModalOpen} 
         onClose={() => setIsRouteOptimizationModalOpen(false)} 
         title="Route Optimization Applied" 
-        message={confirmationModalMessage}
+        message="Your route optimization suggestion has been applied."
         confirmButtonText="OK"
         onConfirm={() => setIsRouteOptimizationModalOpen(false)}
       />

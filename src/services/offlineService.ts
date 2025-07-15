@@ -387,7 +387,7 @@ class OfflineService {
   }
 
   // Resolve sync conflict
-  async resolveSyncConflict(conflictId: number, resolution: 'local' | 'server' | 'manual'): Promise<void> {
+  async resolveSyncConflict(conflictId: number): Promise<void> {
     if (!this.db) return;
 
     const transaction = this.db.transaction(['syncConflicts'], 'readwrite');
@@ -404,11 +404,6 @@ class OfflineService {
   private getLastSyncTime(): string | undefined {
     const lastSync = localStorage.getItem('lastSyncTime');
     return lastSync || undefined;
-  }
-
-  // Set last sync time
-  private setLastSyncTime(): void {
-    localStorage.setItem('lastSyncTime', new Date().toISOString());
   }
 
   // Clear all offline data (for testing/debugging)

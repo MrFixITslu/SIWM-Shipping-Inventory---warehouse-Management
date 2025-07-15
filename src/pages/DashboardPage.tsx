@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import PageContainer from '@/components/PageContainer';
 import ErrorMessage from '@/components/ErrorMessage';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
-import { useAuth } from '@/contexts/AuthContext';
 import { dashboardService } from '@/services/dashboardService';
 import { asnService } from '@/services/asnService';
 import { inventoryService } from '@/services/inventoryService';
@@ -16,8 +15,6 @@ import {
   VendorIcon, 
   WarningIcon,
   BuildingOfficeIcon,
-  CheckBadgeIcon,
-  CurrencyDollarIcon,
   ClockIcon
 } from '@/constants';
 
@@ -347,14 +344,6 @@ const ASNStatusSummary: React.FC<{ asnData: any }> = ({ asnData }) => (
 const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ stockData, loading }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
-  const columns = [
-    { key: 'department', header: 'Department', sortable: true },
-    { key: 'totalValue', header: 'Total Stock Value', sortable: true },
-    { key: 'itemCount', header: 'Item Count', sortable: true },
-    { key: 'avgValue', header: 'Avg Value per Item', sortable: true },
-    { key: 'percentage', header: '% of Total', sortable: true },
-  ];
-
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -363,17 +352,6 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
       maximumFractionDigits: 0,
     }).format(value);
   };
-
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
-  const processedData = stockData.map(item => ({
-    ...item,
-    totalValue: formatCurrency(item.totalValue || 0),
-    avgValue: formatCurrency(item.avgValue || 0),
-    percentage: formatPercentage(item.percentage || 0),
-  }));
 
   const totalValue = stockData.reduce((sum, item) => sum + (item.totalValue || 0), 0);
   const totalItems = stockData.reduce((sum, item) => sum + (item.itemCount || 0), 0);
@@ -421,8 +399,8 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
             </div>
           ) : (
             <Table
-              columns={columns}
-              data={processedData}
+              columns={[]}
+              data={stockData}
             />
           )}
         </div>
@@ -434,18 +412,6 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
 // Aged Inventory Table Component
 const AgedInventoryTable: React.FC<{ agedData: any[]; loading: boolean }> = ({ agedData, loading }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
-
-  const columns: any[] = [
-    { key: 'name', header: 'Item Name', sortable: true },
-    { key: 'sku', header: 'SKU', sortable: true },
-    { key: 'department', header: 'Department', sortable: true },
-    { key: 'quantity', header: 'Quantity', sortable: true },
-    { key: 'ageInDays', header: 'Age (Days)', sortable: true },
-    { key: 'entryDate', header: 'Entry Date', sortable: true },
-    { key: 'totalValue', header: 'Total Value', sortable: true },
-    { key: 'location', header: 'Location', sortable: true },
-    { key: 'isAged', header: 'Aged Item', sortable: true, render: (item: {isAged?: boolean}) => item.isAged ? '✔️' : '' },
-  ];
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -481,13 +447,6 @@ const AgedInventoryTable: React.FC<{ agedData: any[]; loading: boolean }> = ({ a
       return isManuallyAged || isOldEnough;
     });
   }, [agedData]);
-
-  const processedData = agedItemsOnly.map(item => ({
-    ...item,
-    totalValue: formatCurrency(item.totalValue || 0),
-    entryDate: formatDate(item.entryDate),
-    ageInDays: formatAge(item.ageInDays || 0),
-  }));
 
   const totalAgedValue = agedItemsOnly.reduce((sum, item) => sum + (item.totalValue || 0), 0);
   const totalAgedItems = agedItemsOnly.length;
@@ -780,7 +739,7 @@ const DashboardPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load dashboard data
-  const loadDashboardData = useCallback(async (forceRefresh = false) => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsRefreshing(true);
       setError(null);
@@ -864,7 +823,7 @@ const DashboardPage: React.FC = () => {
   }, [loadDashboardData]);
 
   const handleRefresh = () => {
-    loadDashboardData(true);
+    loadDashboardData();
   };
 
   if (error) {

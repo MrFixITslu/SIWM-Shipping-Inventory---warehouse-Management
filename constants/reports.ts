@@ -1,4 +1,4 @@
-import { ReportCategory, ReportDefinition, ColumnDefinition, InventoryItem, ItemBelowReorderPoint, ItemAtRiskOfStockOut, RunRateData } from '@/types';
+import { ReportCategory, ReportDefinition, ColumnDefinition, InventoryItem } from '@/types';
 
 export const REPORT_DEFINITIONS: ReportDefinition[] = [
   {
@@ -75,12 +75,12 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
       { key: 'sku', header: 'SKU', sortable: true },
       { key: 'currentQuantity', header: 'Current Quantity', sortable: true },
       { key: 'reorderPoint', header: 'Reorder Point', sortable: true },
-      { key: 'shortfall', header: 'Shortfall', sortable: true, render: (item: ItemBelowReorderPoint) => 
+      { key: 'shortfall', header: 'Shortfall', sortable: true, render: (item: any) => 
         `-${item.shortfall}`
       },
       { key: 'category', header: 'Category', sortable: true },
       { key: 'location', header: 'Location', sortable: true },
-    ] as ColumnDefinition<ItemBelowReorderPoint, keyof ItemBelowReorderPoint>[],
+    ] as ColumnDefinition<any, keyof any>[],
     naturalLanguageQuery: 'below reorder point'
   },
   {
@@ -108,17 +108,17 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
       { key: 'itemName', header: 'Item Name', sortable: true },
       { key: 'sku', header: 'SKU', sortable: true },
       { key: 'currentQuantity', header: 'Current Quantity', sortable: true },
-      { key: 'sixMonthDemand', header: '6-Month Demand', sortable: true, render: (item: ItemAtRiskOfStockOut) => 
+      { key: 'sixMonthDemand', header: '6-Month Demand', sortable: true, render: (item: any) => 
         `${item.sixMonthDemand.toLocaleString()} (${item.demandRange.min.toLocaleString()}–${item.demandRange.max.toLocaleString()})`
       },
-      { key: 'projectedStockOutDate', header: 'Projected Stock-Out', sortable: true, render: (item: ItemAtRiskOfStockOut) => 
+      { key: 'projectedStockOutDate', header: 'Projected Stock-Out', sortable: true, render: (item: any) => 
         item.projectedStockOutDate
       },
       { key: 'leadTime', header: 'Lead Time (Days)', sortable: true },
-      { key: 'variability', header: 'Variability (%)', sortable: true, render: (item: ItemAtRiskOfStockOut) => `±${item.variability}%` },
+      { key: 'variability', header: 'Variability (%)', sortable: true, render: (item: any) => `±${item.variability}%` },
       { key: 'category', header: 'Category', sortable: true },
       { key: 'location', header: 'Location', sortable: true },
-    ] as ColumnDefinition<ItemAtRiskOfStockOut, keyof ItemAtRiskOfStockOut>[],
+    ] as ColumnDefinition<any, keyof any>[],
     naturalLanguageQuery: 'stock out risk 6 months'
   },
   {
@@ -142,19 +142,19 @@ export const REPORT_DEFINITIONS: ReportDefinition[] = [
     ],
     columns: [
       { key: 'weeklyInstalls', header: 'Weekly Installs', sortable: true },
-      { key: 'source', header: 'Source', sortable: true, render: (item: RunRateData) => 
+      { key: 'source', header: 'Source', sortable: true, render: (item: any) => 
         item.source.charAt(0).toUpperCase() + item.source.slice(1)
       },
-      { key: 'lastUpdated', header: 'Last Updated', sortable: true, render: (item: RunRateData) => 
+      { key: 'lastUpdated', header: 'Last Updated', sortable: true, render: (item: any) => 
         new Date(item.lastUpdated).toLocaleDateString()
       },
-      { key: 'dailyAverage', header: 'Daily Average', sortable: true, render: (item: RunRateData) => 
+      { key: 'dailyAverage', header: 'Daily Average', sortable: true, render: (item: any) => 
         Math.round(item.weeklyInstalls / 6).toLocaleString()
       },
-      { key: 'monthlyProjection', header: 'Monthly Projection', sortable: true, render: (item: RunRateData) => 
+      { key: 'monthlyProjection', header: 'Monthly Projection', sortable: true, render: (item: any) => 
         Math.round(item.weeklyInstalls * 4.33).toLocaleString()
       },
-    ] as ColumnDefinition<RunRateData, keyof RunRateData>[],
+    ] as ColumnDefinition<any, keyof any>[],
     naturalLanguageQuery: 'run rate history'
   },
   {

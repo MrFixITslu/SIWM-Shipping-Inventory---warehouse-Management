@@ -5,7 +5,6 @@ import { asnService } from '@/services/asnService';
 import { alertingService } from '@/services/alertingService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { CheckBadgeIcon, BellIcon } from '@/constants';
-import { useNavigate } from 'react-router-dom';
 
 interface ConfirmReceivedModalProps {
   isOpen: boolean;
@@ -25,7 +24,6 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [shipmentDetails, setShipmentDetails] = useState<ASN | null>(null);
   const [notificationSent, setNotificationSent] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen && shipment) {
@@ -72,7 +70,7 @@ const ConfirmReceivedModal: React.FC<ConfirmReceivedModalProps> = ({
     setError(null);
     try {
       // Update status to 'Arrived' to complete the receive process
-      await asnService.updateASN(shipment.id, { status: 'Arrived' });
+      await asnService.updateASN(shipment.id, { status: 'At the Warehouse' });
       onConfirmComplete();
       onClose();
     } catch (err: any) {
