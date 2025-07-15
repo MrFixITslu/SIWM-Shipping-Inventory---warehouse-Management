@@ -5,7 +5,6 @@ import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { dashboardService } from '@/services/dashboardService';
 import { asnService } from '@/services/asnService';
 import { inventoryService } from '@/services/inventoryService';
-import { aiInsightService } from '@/services/aiInsightService';
 import Table from '@/components/Table';
 import { 
   ShipmentIcon, 

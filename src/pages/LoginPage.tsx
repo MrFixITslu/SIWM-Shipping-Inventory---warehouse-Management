@@ -8,7 +8,6 @@ import PageContainer from '@/components/PageContainer';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { APP_NAME, WarningIcon } from '@/constants'; 
 import LoginBackground from '@/components/LoginBackground';
-import { UserRole } from '@/types';
 import { authService } from '../services/authService';
 
 const LoginPage: React.FC = () => {
