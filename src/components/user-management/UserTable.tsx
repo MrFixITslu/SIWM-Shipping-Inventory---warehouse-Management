@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import Table from '@/components/Table';
 import ConfirmationModal from '@/components/ConfirmationModal';
 import UserAuditLogModal from './UserAuditLogModal';
+import DestructiveConfirmationModal from '@/components/DestructiveConfirmationModal';
 import { User, ColumnDefinition } from '@/types';
 import { userService } from '@/services/userService';
 import { USER_GROUPS } from '@/constants/permissions';
@@ -27,6 +28,10 @@ const UserTable: React.FC<UserTableProps> = ({ users, currentUser, searchTerm, s
   const { isModalOpen, confirmButtonText, showConfirmation, handleConfirm, handleClose } = useConfirmationModal();
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [selectedUserForLogs, setSelectedUserForLogs] = useState<User | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleStatusToggle = (user: User) => {
     showConfirmation(async () => {
@@ -39,6 +44,28 @@ const UserTable: React.FC<UserTableProps> = ({ users, currentUser, searchTerm, s
   const handleViewAuditLog = (user: User) => {
     setSelectedUserForLogs(user);
     setIsAuditModalOpen(true);
+  };
+
+  const handleDeleteUser = (user: User) => {
+    setUserToDelete(user);
+    setDeleteError(null);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await userService.deleteUser(userToDelete.id);
+      setIsDeleteModalOpen(false);
+      setUserToDelete(null);
+      onDataChange();
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete user.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getStatusBadge = (status?: 'active' | 'inactive') => {
@@ -63,9 +90,14 @@ const UserTable: React.FC<UserTableProps> = ({ users, currentUser, searchTerm, s
       <button onClick={() => onEditUser(item)} className="p-1 text-blue-500 hover:text-blue-700" title="Edit Permissions & Group"><EditIcon className="h-5 w-5" /></button>
       <button onClick={() => handleViewAuditLog(item)} className="p-1 text-secondary-500 hover:text-secondary-700" title="View Audit Log"><ClockIcon className="h-5 w-5" /></button>
       {currentUser.id !== item.id && (
-        <button onClick={() => handleStatusToggle(item)} className="p-1" title={item.status === 'active' ? 'Deactivate User' : 'Activate User'}>
-          {item.status === 'active' ? <XCircleIcon className="h-5 w-5 text-red-500 hover:text-red-700" /> : <CheckBadgeIcon className="h-5 w-5 text-green-500 hover:text-green-700" />}
-        </button>
+        <>
+          <button onClick={() => handleStatusToggle(item)} className="p-1" title={item.status === 'active' ? 'Deactivate User' : 'Activate User'}>
+            {item.status === 'active' ? <XCircleIcon className="h-5 w-5 text-red-500 hover:text-red-700" /> : <CheckBadgeIcon className="h-5 w-5 text-green-500 hover:text-green-700" />}
+          </button>
+          <button onClick={() => handleDeleteUser(item)} className="p-1 text-red-500 hover:text-red-700" title="Delete User">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </>
       )}
     </div>
   );
@@ -125,6 +157,20 @@ const UserTable: React.FC<UserTableProps> = ({ users, currentUser, searchTerm, s
             isOpen={isAuditModalOpen}
             onClose={() => setIsAuditModalOpen(false)}
             user={selectedUserForLogs}
+        />
+        <DestructiveConfirmationModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={confirmDeleteUser}
+          isSaving={isDeleting}
+          title="Confirm Delete User"
+          confirmPhrase={userToDelete?.email || 'delete'}
+          confirmButtonText="Delete User"
+          message={<>
+            <p>Are you sure you want to permanently delete this user?</p>
+            <p className="mt-2"><b>{userToDelete?.name}</b> ({userToDelete?.email})</p>
+            {deleteError && <p className="text-red-600 mt-2">{deleteError}</p>}
+          </>}
         />
     </>
   );

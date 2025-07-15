@@ -125,6 +125,7 @@ const ReportingPage: React.FC = () => {
           <button
             onClick={handleNlQuerySearch}
             className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-r-md shadow-sm flex items-center"
+            aria-label="Search"
           >
             <SearchIcon className="h-5 w-5" />
           </button>

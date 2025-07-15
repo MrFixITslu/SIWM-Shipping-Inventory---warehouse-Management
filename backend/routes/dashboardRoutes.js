@@ -1,7 +1,7 @@
 // backend/routes/dashboardRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getMetrics, getShipmentsChart, getOrderVolumeChart, getUnacknowledgedCount, getWorkflowMetrics, getItemsBelowReorderPoint, getItemsAtRiskOfStockOut, getCurrentRunRate, updateRunRate, getWarehouseMetrics, getInventoryFlow, getSupportDashboardMetrics, getOfflineStatus, getInventoryMovements, getInventoryFlowChart, getStockValueByDepartment, getAgedInventory } = require('../controllers/dashboardController');
+const { getMetrics, getShipmentsChart, getOrderVolumeChart, getUnacknowledgedCount, getWorkflowMetrics, getItemsBelowReorderPoint, getItemsAtRiskOfStockOut, getCurrentRunRate, updateRunRate, getWarehouseMetrics, getInventoryFlow, getSupportDashboardMetrics, getOfflineStatus, getInventoryMovements, getInventoryFlowChart, getStockValueByDepartment, getAgedInventory, getOutOfStockItemsWithDetails } = require('../controllers/dashboardController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
@@ -21,6 +21,7 @@ router.get('/offline-status', getOfflineStatus);
 // New stock analysis routes
 router.get('/items-below-reorder-point', getItemsBelowReorderPoint);
 router.get('/items-at-risk', getItemsAtRiskOfStockOut);
+router.get('/out-of-stock-items', getOutOfStockItemsWithDetails);
 router.get('/run-rate', getCurrentRunRate);
 router.post('/update-run-rate', updateRunRate);
 

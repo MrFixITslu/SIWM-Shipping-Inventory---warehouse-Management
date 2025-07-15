@@ -6,6 +6,7 @@ import { userService } from '@/services/userService';
 import { USER_GROUPS } from '@/constants/permissions';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import UserPermissionsForm from './UserPermissionsForm';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -20,6 +21,11 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
   const [formData, setFormData] = useState<Partial<User> & { password?: string }>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { user: currentUser } = useAuth();
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState<string | null>(null);
+  const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
 
   const isEditing = !!user?.id;
 
@@ -72,6 +78,23 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
       setError(err.message || 'An unexpected error occurred.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user?.id || !resetPassword) return;
+    setResetPasswordLoading(true);
+    setResetPasswordSuccess(null);
+    setResetPasswordError(null);
+    try {
+      const res = await userService.resetPassword(user.id, resetPassword);
+      setResetPasswordSuccess(res.message || 'Password reset successfully.');
+      setResetPassword('');
+    } catch (err: any) {
+      setResetPasswordError(err.message || 'Failed to reset password.');
+    } finally {
+      setResetPasswordLoading(false);
     }
   };
   
@@ -146,7 +169,36 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
         </div>
 
         <UserPermissionsForm selectedPermissions={formData.permissions || []} onPermissionChange={handlePermissionChange} />
-
+        {/* Password reset section for editing users (not self) */}
+        {isEditing && user?.id && currentUser?.id !== user.id && (
+          <div className="border-t border-secondary-200 dark:border-secondary-700 pt-4 mt-4">
+            <h4 className="text-md font-semibold text-secondary-800 dark:text-secondary-200 mb-2">Reset Password</h4>
+            <form onSubmit={handlePasswordReset} className="flex flex-col md:flex-row md:items-center gap-2">
+              <input
+                type="password"
+                name="resetPassword"
+                value={resetPassword}
+                onChange={e => setResetPassword(e.target.value)}
+                minLength={6}
+                placeholder="New password"
+                className={`w-full md:w-64 ${TAILWIND_INPUT_CLASSES}`}
+                autoComplete="new-password"
+                required
+                disabled={resetPasswordLoading}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50"
+                disabled={resetPasswordLoading || !resetPassword}
+              >
+                {resetPasswordLoading ? <LoadingSpinner className="w-5 h-5"/> : 'Reset Password'}
+              </button>
+            </form>
+            {resetPasswordSuccess && <div className="text-green-600 dark:text-green-400 mt-2">{resetPasswordSuccess}</div>}
+            {resetPasswordError && <div className="text-red-600 dark:text-red-400 mt-2">{resetPasswordError}</div>}
+            <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">Minimum 6 characters.</p>
+          </div>
+        )}
         <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-secondary-700 dark:text-secondary-300 bg-secondary-100 dark:bg-secondary-600 rounded-md" disabled={isSaving}>Cancel</button>
             <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50" disabled={isSaving}>

@@ -17,6 +17,7 @@ import {
   BuildingOfficeIcon,
   ClockIcon
 } from '@/constants';
+import { useRealtimeUpdates } from '@/hooks/useRealtimeUpdates';
 
 // Online Status Indicator Component
 const OnlineStatusIndicator: React.FC<{ isOnline: boolean; lastSyncTime?: string }> = ({ isOnline, lastSyncTime }) => (
@@ -200,9 +201,12 @@ const StockAnalysis: React.FC<{
         <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100">
           Items At Risk of Stock Out
         </h3>
-        <span className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-          {itemsAtRiskOfStockOut.length}
-        </span>
+        <div className="flex items-center space-x-2">
+          <span className={`text-2xl font-bold ${itemsAtRiskOfStockOut.length === 0 ? 'text-gray-400 dark:text-gray-500' : 'text-yellow-600 dark:text-yellow-400'}`}
+            >
+            {itemsAtRiskOfStockOut.length}
+          </span>
+        </div>
       </div>
       {loading ? (
         <div className="space-y-3">
@@ -634,9 +638,9 @@ const DashboardHeader: React.FC<{
   asnData: any;
   agedInventoryData: any[];
   lastUpdated: Date | null;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-}> = ({ isOnline, lastSyncTime, metrics, asnData, agedInventoryData, lastUpdated, onRefresh, isRefreshing }) => (
+  // onRefresh: () => void; // Remove refresh prop
+  // isRefreshing: boolean; // Remove isRefreshing prop
+}> = ({ isOnline, lastSyncTime, metrics, asnData, agedInventoryData, lastUpdated }) => (
   <div className="mb-8">
     {/* Header with Online Status */}
     <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
@@ -655,20 +659,7 @@ const DashboardHeader: React.FC<{
       </div>
       <div className="flex items-center space-x-4 mt-4 md:mt-0">
         <OnlineStatusIndicator isOnline={isOnline} lastSyncTime={lastSyncTime} />
-        <button
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:bg-primary-400 text-white rounded-lg flex items-center space-x-2 transition-colors duration-200"
-        >
-          {isRefreshing ? (
-            <LoadingSpinner className="w-4 h-4" />
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          )}
-          <span>{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
-        </button>
+        {/* Refresh button removed */}
       </div>
     </div>
 
@@ -755,12 +746,13 @@ const DashboardPage: React.FC = () => {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [offlineStatus, setOfflineStatus] = useState({ isOnline: true, lastSyncTime: undefined });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // const [isRefreshing, setIsRefreshing] = useState(false); // Remove manual refresh state
+  const [outOfStockItems, setOutOfStockItems] = useState<any[]>([]);
 
   // Load dashboard data
   const loadDashboardData = useCallback(async () => {
     try {
-      setIsRefreshing(true);
+      // setIsRefreshing(true); // Remove manual refresh state
       setError(null);
 
       // Load all dashboard data in parallel, but fetch inventory items separately
@@ -772,8 +764,8 @@ const DashboardPage: React.FC = () => {
         stockValueData, 
         agedInventoryData,
         itemsBelowReorderPointData,
-        stockOutForecastData,
-        inventoryItemsData
+        inventoryItemsData,
+        outOfStockItemsData
       ] = await Promise.all([
         dashboardService.getDashboardMetrics(),
         dashboardService.getWorkflowMetrics(),
@@ -782,24 +774,29 @@ const DashboardPage: React.FC = () => {
         dashboardService.getStockValueByDepartment(),
         dashboardService.getAgedInventory(),
         dashboardService.getItemsBelowReorderPoint(),
-        aiInsightService.getStockOutForecast(),
-        inventoryService.getInventoryItems()
+        inventoryService.getInventoryItems(),
+        dashboardService.getOutOfStockItemsWithDetails()
       ]);
 
       setMetrics(metricsData);
       setWorkflowMetrics(workflowData);
       setOfflineStatus(offlineData);
       setInventoryItems(Array.isArray(inventoryItemsData) ? inventoryItemsData : []);
-      
-      // Log the stock value by department API response for debugging
-      console.log('Stock Value by Department API response:', stockValueData);
-      console.log('Stock Value by Department type:', typeof stockValueData);
-      console.log('Stock Value by Department is array:', Array.isArray(stockValueData));
-      
       setStockValueData(Array.isArray(stockValueData) ? stockValueData : (stockValueData as any)?.departments || []);
       setAgedInventoryData(Array.isArray(agedInventoryData) ? agedInventoryData : (agedInventoryData as any)?.agedItems || []);
       setItemsBelowReorderPoint(Array.isArray(itemsBelowReorderPointData) ? itemsBelowReorderPointData : (itemsBelowReorderPointData as any)?.items || []);
-      setItemsAtRiskOfStockOut(Array.isArray(stockOutForecastData) ? stockOutForecastData : []);
+      setOutOfStockItems(Array.isArray(outOfStockItemsData) ? outOfStockItemsData : (outOfStockItemsData as any)?.items || []);
+
+      // Formula-based calculation for items at risk of stock out
+      const atRisk = (Array.isArray(inventoryItemsData) ? inventoryItemsData : []).filter(item => {
+        // Use avgDailyUsage and leadTimeDays if present, otherwise fallback to possible alternatives or defaults
+        // Use (item as any) to avoid TS errors if fields are not in InventoryItem type
+        const avgDailyUsage = (item as any).avgDailyUsage ?? (item as any).averageDailyUsage ?? 1;
+        const leadTimeDays = (item as any).leadTimeDays ?? (item as any).leadTime ?? 7;
+        return item.quantity <= (avgDailyUsage * leadTimeDays);
+      });
+      setItemsAtRiskOfStockOut(atRisk);
+
       setLastUpdated(new Date());
 
       // Process ASN data for status summary
@@ -823,7 +820,7 @@ const DashboardPage: React.FC = () => {
       setError(error.message || 'Failed to load dashboard data');
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
+      // setIsRefreshing(false); // Remove manual refresh state
     }
   }, []);
 
@@ -832,18 +829,20 @@ const DashboardPage: React.FC = () => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  // Auto-refresh every 60 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
+  // Remove auto-refresh interval
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     loadDashboardData();
+  //   }, 60000);
+  //   return () => clearInterval(interval);
+  // }, [loadDashboardData]);
+
+  // Real-time updates: reload dashboard data when a relevant SSE event is received
+  useRealtimeUpdates({
+    'dashboard_updated': () => {
       loadDashboardData();
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [loadDashboardData]);
-
-  const handleRefresh = () => {
-    loadDashboardData();
-  };
+    }
+  });
 
   if (error) {
     return (
@@ -865,8 +864,8 @@ const DashboardPage: React.FC = () => {
         asnData={asnData}
         agedInventoryData={agedInventoryData}
         lastUpdated={lastUpdated}
-        onRefresh={handleRefresh}
-        isRefreshing={isRefreshing}
+        // onRefresh={handleRefresh} // Remove
+        // isRefreshing={isRefreshing} // Remove
       />
 
       {/* Workflow Metrics */}
@@ -883,6 +882,45 @@ const DashboardPage: React.FC = () => {
         />
       </div>
 
+      {/* Out of Stock Items Section */}
+      <div className="mb-8">
+        <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg border border-secondary-200 dark:border-secondary-700">
+          <h3 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100 mb-4">
+            Out of Stock Items
+          </h3>
+          {outOfStockItems.length === 0 ? (
+            <div className="text-green-600 dark:text-green-400">No items are currently out of stock.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Name</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">SKU</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Category</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Department</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Location</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Days Out of Stock</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {outOfStockItems.map(item => (
+                    <tr key={item.id} className="bg-white dark:bg-secondary-800">
+                      <td className="px-4 py-2 text-secondary-900 dark:text-secondary-100">{item.name}</td>
+                      <td className="px-4 py-2 text-secondary-700 dark:text-secondary-200">{item.sku}</td>
+                      <td className="px-4 py-2 text-secondary-700 dark:text-secondary-200">{item.category}</td>
+                      <td className="px-4 py-2 text-secondary-700 dark:text-secondary-200">{item.department || 'N/A'}</td>
+                      <td className="px-4 py-2 text-secondary-700 dark:text-secondary-200">{item.location}</td>
+                      <td className="px-4 py-2 text-secondary-700 dark:text-secondary-200">{item.daysOutOfStock !== null && item.daysOutOfStock !== undefined ? item.daysOutOfStock : 'N/A'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Stock Value by Department Table */}
       <div className="mb-8">
         <StockValueTable stockData={stockValueData} loading={isLoading} />
@@ -896,12 +934,6 @@ const DashboardPage: React.FC = () => {
       {/* Footer */}
       <div className="text-center text-sm text-secondary-500 dark:text-secondary-400 mt-8">
         Dashboard rebuilt with comprehensive KPIs and real-time data
-        {isRefreshing && (
-          <div className="mt-2 flex items-center justify-center">
-            <LoadingSpinner className="w-4 h-4 mr-2" />
-            <span>Checking for updates...</span>
-          </div>
-        )}
       </div>
     </PageContainer>
   );

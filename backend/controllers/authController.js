@@ -56,22 +56,30 @@ const registerUser = async (req, res, next) => {
 // @route   POST /api/v1/auth/login
 // @access  Public
 const authUser = async (req, res, next) => {
-  const { email, password } = req.body;
+  // Trim and lowercase the email for consistent lookup
+  const rawEmail = req.body.email;
+  const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+  const password = req.body.password;
 
   // Basic Input Validation
   if (!email || !password) {
     res.status(400);
     return next(new Error('Please provide email and password'));
   }
-   if (typeof email !== 'string' || typeof password !== 'string') {
+  if (typeof email !== 'string' || typeof password !== 'string') {
     res.status(400);
     return next(new Error('Email and password must be strings.'));
   }
 
   try {
     const user = await userService.findUserByEmail(email);
+    const passwordProvided = !!password;
+    let passwordMatch = false;
+    if (user && passwordProvided) {
+      passwordMatch = await userService.matchPassword(email, password);
+    }
 
-    if (user && (await userService.matchPassword(email, password))) {
+    if (user && passwordMatch) {
       // Log successful login with IP address for security monitoring
       const clientIP = req.clientIP || req.ip || 'unknown';
       console.log(`Successful login: ${email} from IP: ${clientIP}`);
@@ -121,8 +129,33 @@ const getUserProfile = async (req, res, next) => {
   }
 };
 
+// @desc    Public password reset (forgot password)
+// @route   POST /api/v1/auth/reset-password
+// @access  Public
+const resetPasswordPublic = async (req, res, next) => {
+  const { email, newPassword } = req.body;
+  if (!email || !newPassword || typeof email !== 'string' || typeof newPassword !== 'string' || newPassword.length < 6) {
+    res.status(400);
+    return next(new Error('Email and a new password (min 6 chars) are required.'));
+  }
+  try {
+    const user = await userService.findUserByEmail(email);
+    if (!user) {
+      // For security, do not reveal if the email exists
+      return res.status(200).json({ message: 'If the email exists, the password has been reset.' });
+    }
+    const salt = await require('bcryptjs').genSalt(10);
+    const hashedPassword = await require('bcryptjs').hash(newPassword, salt);
+    await require('../config/db').getPool().query('UPDATE users SET password = $1 WHERE email = $2', [hashedPassword, email]);
+    return res.status(200).json({ message: 'If the email exists, the password has been reset.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   registerUser,
   authUser,
   getUserProfile,
+  resetPasswordPublic,
 };

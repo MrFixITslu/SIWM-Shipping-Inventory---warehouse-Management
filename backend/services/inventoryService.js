@@ -162,6 +162,23 @@ const decreaseStock = async(itemId, quantityToDecrease) => {
             'UPDATE inventory_items SET quantity = $1, last_movement_date = CURRENT_DATE WHERE id = $2 RETURNING *',
             [newQuantity, itemId]
         );
+        // Log the inventory movement with new_quantity
+        await client.query(
+            'INSERT INTO inventory_movements (inventory_item_id, warehouse_id, movement_type, quantity, from_location, to_location, reference_type, reference_id, performed_by, notes, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+            [
+                itemId,
+                item.warehouse_id || null,
+                'shipped', // or 'adjusted', etc. Adjust as needed for your use case
+                quantityToDecrease,
+                null, // from_location
+                null, // to_location
+                null, // reference_type
+                null, // reference_id
+                null, // performed_by
+                'Stock decreased',
+                newQuantity
+            ]
+        );
         await client.query('COMMIT');
         
         const updatedItem = mapDbItemToAppItem(updateRes.rows[0]);

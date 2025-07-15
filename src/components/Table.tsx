@@ -78,7 +78,7 @@ const TableInner = <T extends Record<string, any>>(
                 className={`px-6 py-3 text-left text-xs font-semibold text-text-secondary dark:text-secondary-300 uppercase tracking-wider select-none ${column.sortable ? 'cursor-pointer hover:bg-primary-50 dark:hover:bg-primary-900/20 group transition-colors duration-150' : ''}`}
                 onClick={() => column.sortable && requestSort(column.key)}
                 tabIndex={column.sortable ? 0 : -1}
-                aria-sort={sortConfig.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : undefined}
+                aria-sort={sortConfig.key === column.key ? (sortConfig.direction === 'ascending' ? 'ascending' : 'descending') : 'none'}
               >
                 <div className="flex items-center">
                   {column.header}

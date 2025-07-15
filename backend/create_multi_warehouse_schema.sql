@@ -134,6 +134,9 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Add new_quantity column to inventory_movements for tracking resulting stock after each movement
+ALTER TABLE inventory_movements ADD COLUMN IF NOT EXISTS new_quantity INTEGER;
+
 -- Create warehouse capacity tracking table
 CREATE TABLE IF NOT EXISTS warehouse_capacity (
     id SERIAL PRIMARY KEY,

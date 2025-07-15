@@ -105,23 +105,25 @@ const startApp = async () => {
     
     const corsOptions = {
       origin: (origin, callback) => {
+        // Enhanced CORS logging for debugging
+        console.log(`[CORS] Incoming request from origin: ${origin}`);
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) {
+          console.log('[CORS] Allowed: No origin (mobile app, curl, etc.)');
           return callback(null, true);
         }
-        
         // Allow all origins in development mode or when public IP access is enabled
         if (process.env.NODE_ENV === 'development' || process.env.ALLOW_PUBLIC_IP === 'true') {
+          console.log(`[CORS] Allowed: Development mode or ALLOW_PUBLIC_IP=true`);
           return callback(null, true);
         }
-        
         // Check if origin is in allowed list
         if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+          console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
           return callback(null, true);
         }
-        
         // Log blocked origins for debugging
-        console.log(`CORS blocked origin: ${origin}`);
+        console.log(`[CORS] BLOCKED: Origin not allowed: ${origin}`);
         return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
       },
       credentials: true,

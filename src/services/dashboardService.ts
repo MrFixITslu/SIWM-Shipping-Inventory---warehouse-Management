@@ -192,4 +192,9 @@ export const dashboardService = {
     const data = await api.get<any>('/dashboard/aged-inventory', { signal });
     return data.agedItems || [];
   },
+
+  getOutOfStockItemsWithDetails: async (signal?: AbortSignal): Promise<any[]> => {
+    const data = await api.get<any>('/dashboard/out-of-stock-items', { signal });
+    return data.items || [];
+  },
 };

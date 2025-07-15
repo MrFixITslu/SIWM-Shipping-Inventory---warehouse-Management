@@ -351,6 +351,62 @@ const getAgedInventory = async (req, res) => {
   }
 };
 
+// Get Out of Stock Items with Department and Days Out of Stock
+const getOutOfStockItemsWithDetails = async (req, res) => {
+  try {
+    const pool = getPool();
+    // Get all items with quantity = 0
+    const itemsRes = await pool.query(`
+      SELECT id, name, sku, category, department, location
+      FROM inventory_items
+      WHERE quantity = 0
+    `);
+    const items = itemsRes.rows;
+    if (items.length === 0) {
+      return res.json({ items: [] });
+    }
+    // For each item, find the most recent inventory_movement where quantity became 0
+    const itemIds = items.map(item => item.id);
+    // Get the last movement for each item where quantity became 0
+    const movementsRes = await pool.query(`
+      SELECT im.inventory_item_id, im.created_at
+      FROM inventory_movements im
+      INNER JOIN (
+        SELECT inventory_item_id, MAX(created_at) as last_zero_date
+        FROM inventory_movements
+        WHERE new_quantity = 0
+        GROUP BY inventory_item_id
+      ) sub ON im.inventory_item_id = sub.inventory_item_id AND im.created_at = sub.last_zero_date
+      WHERE im.inventory_item_id = ANY($1)
+    `, [itemIds]);
+    const movementMap = {};
+    for (const row of movementsRes.rows) {
+      movementMap[row.inventory_item_id] = row.created_at;
+    }
+    const now = new Date();
+    const result = items.map(item => {
+      const zeroDate = movementMap[item.id] ? new Date(movementMap[item.id]) : null;
+      let daysOutOfStock = null;
+      if (zeroDate) {
+        daysOutOfStock = Math.floor((now - zeroDate) / (1000 * 60 * 60 * 24));
+      }
+      return {
+        id: item.id,
+        name: item.name,
+        sku: item.sku,
+        category: item.category,
+        department: item.department,
+        location: item.location,
+        daysOutOfStock,
+      };
+    });
+    res.json({ items: result });
+  } catch (error) {
+    console.error('Error fetching out of stock items with details:', error);
+    res.status(500).json({ message: 'Failed to fetch out of stock items with details' });
+  }
+};
+
 module.exports = {
     getMetrics,
     getWorkflowMetrics,
@@ -368,5 +424,6 @@ module.exports = {
     getInventoryMovements,
     getOfflineStatus,
     getStockValueByDepartment,
-    getAgedInventory
+    getAgedInventory,
+    getOutOfStockItemsWithDetails
 };

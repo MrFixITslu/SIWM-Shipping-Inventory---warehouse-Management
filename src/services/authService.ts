@@ -78,4 +78,8 @@ export const authService = {
     authService.logout();
     throw new Error('Could not validate session.');
   },
+
+  resetPassword: async (email: string, newPassword: string): Promise<{message: string}> => {
+    return api.post('/auth/reset-password', { email, newPassword });
+  },
 };

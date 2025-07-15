@@ -427,12 +427,35 @@ const receiveShipment = async (asnId, receivedItems, userId) => {
                         'UPDATE inventory_items SET serial_numbers = $1, quantity = $2, last_movement_date = CURRENT_DATE WHERE id = $3',
                         [combinedSerials, combinedSerials.length, receivedItem.itemId]
                     );
+                    // Log movement for serialized items
+                    await client.query(
+                        'INSERT INTO inventory_movements (inventory_item_id, warehouse_id, movement_type, quantity, from_location, to_location, reference_type, reference_id, performed_by, notes, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+                        [
+                            receivedItem.itemId,
+                            inventoryItem.warehouse_id || null,
+                            'received',
+                            newSerials.length,
+                            null, null, null, null, userId || null, 'Stock received (serialized)', combinedSerials.length
+                        ]
+                    );
                 }
             } else {
                 if (receivedItem.receivedQuantity > 0) {
-                    await client.query(
-                        'UPDATE inventory_items SET quantity = quantity + $1, last_movement_date = CURRENT_DATE WHERE id = $2',
+                    const updateRes = await client.query(
+                        'UPDATE inventory_items SET quantity = quantity + $1, last_movement_date = CURRENT_DATE WHERE id = $2 RETURNING *',
                         [receivedItem.receivedQuantity, receivedItem.itemId]
+                    );
+                    const updatedItem = updateRes.rows[0];
+                    // Log movement for non-serialized items
+                    await client.query(
+                        'INSERT INTO inventory_movements (inventory_item_id, warehouse_id, movement_type, quantity, from_location, to_location, reference_type, reference_id, performed_by, notes, new_quantity) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+                        [
+                            receivedItem.itemId,
+                            updatedItem.warehouse_id || null,
+                            'received',
+                            receivedItem.receivedQuantity,
+                            null, null, null, null, userId || null, 'Stock received', updatedItem.quantity
+                        ]
                     );
                 }
             }
