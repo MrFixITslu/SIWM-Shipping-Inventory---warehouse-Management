@@ -344,6 +344,14 @@ const ASNStatusSummary: React.FC<{ asnData: any }> = ({ asnData }) => (
 const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ stockData, loading }) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
+  const columns = [
+    { key: 'department', header: 'Department', sortable: true },
+    { key: 'totalValue', header: 'Total Stock Value', sortable: true },
+    { key: 'itemCount', header: 'Item Count', sortable: true },
+    { key: 'avgValue', header: 'Avg Value per Item', sortable: true },
+    { key: 'percentage', header: '% of Total', sortable: true },
+  ];
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -352,6 +360,17 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
       maximumFractionDigits: 0,
     }).format(value);
   };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+
+  const processedData = stockData.map(item => ({
+    ...item,
+    totalValue: formatCurrency(item.totalValue || 0),
+    avgValue: formatCurrency(item.avgValue || 0),
+    percentage: formatPercentage(item.percentage || 0),
+  }));
 
   const totalValue = stockData.reduce((sum, item) => sum + (item.totalValue || 0), 0);
   const totalItems = stockData.reduce((sum, item) => sum + (item.itemCount || 0), 0);
@@ -399,8 +418,8 @@ const StockValueTable: React.FC<{ stockData: any[]; loading: boolean }> = ({ sto
             </div>
           ) : (
             <Table
-              columns={[]}
-              data={stockData}
+              columns={columns}
+              data={processedData}
             />
           )}
         </div>

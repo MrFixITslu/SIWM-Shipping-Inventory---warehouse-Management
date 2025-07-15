@@ -7,7 +7,6 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import ErrorMessage from '@/components/ErrorMessage';
 import SerialManagementModal from '@/components/SerialManagementModal';
 import AutocompleteInput from '@/components/AutocompleteInput';
-import BarcodeManager from '@/components/BarcodeManager';
 import useConfirmationModal from '@/hooks/useConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,7 +60,6 @@ const InventoryManagementPage: React.FC = () => {
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [addedItemsForAsn, setAddedItemsForAsn] = useState<Array<{name: string, sku: string, quantity: number, serialNumbers?: string[]}>>([]);
-  const [isBarcodeManagerOpen, setIsBarcodeManagerOpen] = useState(false);
 
   // Add filter state
   const [agedFilter, setAgedFilter] = useState<'all' | 'aged' | 'non-aged'>('all');
@@ -529,15 +527,6 @@ const InventoryManagementPage: React.FC = () => {
             <PlusIcon className="h-5 w-5 mr-2" />
             Add Item
           </button>
-          <button
-            onClick={() => setIsBarcodeManagerOpen(true)}
-            className="flex items-center bg-secondary-600 hover:bg-secondary-700 text-white font-semibold px-4 py-2 rounded-lg shadow-md"
-          >
-            <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-            </svg>
-            Barcode/QR
-          </button>
         </div>
       }
     >
@@ -850,12 +839,6 @@ const InventoryManagementPage: React.FC = () => {
         title="Confirm Delete"
         message="Are you sure you want to delete this item? This action cannot be undone."
         confirmButtonText={confirmButtonText}
-      />
-
-      {/* Barcode Manager Modal */}
-      <BarcodeManager
-        isOpen={isBarcodeManagerOpen}
-        onClose={() => setIsBarcodeManagerOpen(false)}
       />
     </PageContainer>
   );

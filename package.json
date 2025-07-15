@@ -42,8 +42,6 @@
     "focus-trap-react": "^10.2.3",
     "helmet": "^8.1.0",
     "helmet-csp": "^4.0.0",
-    "html5-qrcode": "^2.3.8",
-    "jsbarcode": "^3.12.1",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "multer": "^2.0.1",
@@ -54,7 +52,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.51.5",
-    "react-qr-code": "^2.0.18",
     "react-router-dom": "^6.23.1",
     "recharts": "^2.12.7",
     "redis": "^5.6.0",
@@ -67,7 +64,7 @@
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
     "@testing-library/user-event": "^14.5.2",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.12.12",
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.3",
@@ -93,15 +90,17 @@
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.3",
+    "ts-jest": "^29.4.0",
     "typescript": "^5.4.5",
     "vite": "^7.0.2"
   },
   "jest": {
+    "preset": "ts-jest",
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
       "<rootDir>/src/setupTests.ts"
     ],
-    "moduleNameMapping": {
+    "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "collectCoverageFrom": [

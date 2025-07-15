@@ -57,6 +57,19 @@ const sessionStorageMock = {
 };
 global.sessionStorage = sessionStorageMock as any;
 
+// Polyfill for TextEncoder/TextDecoder in Jest
+try {
+  const { TextEncoder, TextDecoder } = require('util');
+  global.TextEncoder = TextEncoder;
+  global.TextDecoder = TextDecoder;
+} catch (e) {}
+
+// Polyfill for setImmediate in Jest
+if (typeof global.setImmediate === 'undefined') {
+  // @ts-expect-error: Node.js setImmediate has __promisify__, this polyfill does not
+  global.setImmediate = (fn: (...args: any[]) => void, ...args: any[]): ReturnType<typeof setTimeout> => setTimeout(fn, 0, ...args);
+}
+
 // Suppress console warnings in tests
 const originalError = console.error;
 beforeAll(() => {

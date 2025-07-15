@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Modal from '@/components/Modal';
-import BarcodeScanner from './BarcodeScanner';
 import { ASN, ReceivedItem } from '@/types';
 import { useInventory } from '@/hooks/useInventory';
 import { asnService } from '@/services/asnService';
@@ -39,8 +38,7 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
     const modalContentRef = useRef<HTMLDivElement>(null);
     const [itemStatuses, setItemStatuses] = useState<Record<number, ItemStatus>>({});
-    const [isScannerOpen, setIsScannerOpen] = useState(false);
-    const [scanningForItemIndex, setScanningForItemIndex] = useState<number | null>(null);
+
 
     useEffect(() => {
         if (isOpen && shipment && Object.keys(inventoryMap).length > 0) {
@@ -91,21 +89,6 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
             newItems[index].receivedQuantity = serials.length.toString();
         }
         setReceivingItems(newItems);
-    };
-
-    const handleScan = (result: string) => {
-        if (scanningForItemIndex !== null) {
-            const currentSerials = receivingItems[scanningForItemIndex].receivedSerials;
-            const newSerials = currentSerials ? `${currentSerials}\n${result}` : result;
-            handleItemChange(scanningForItemIndex, 'receivedSerials', newSerials);
-            setScanningForItemIndex(null);
-            setIsScannerOpen(false);
-        }
-    };
-
-    const handleStartScan = (index: number) => {
-        setScanningForItemIndex(index);
-        setIsScannerOpen(true);
     };
 
     const handleReceive = async () => {
@@ -179,16 +162,6 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                                         <label htmlFor={`serials-${item.itemId}`} className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">
                                             Serial Numbers ({item.receivedQuantity} received)
                                         </label>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleStartScan(index)}
-                                            className="flex items-center px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-md transition-colors"
-                                        >
-                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-                                            </svg>
-                                            Scan
-                                        </button>
                                     </div>
                                     <textarea
                                         id={`serials-${item.itemId}`}
@@ -196,7 +169,7 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                                         value={item.receivedSerials}
                                         onChange={(e) => handleItemChange(index, 'receivedSerials', e.target.value)}
                                         className={`mt-1 block w-full ${TAILWIND_INPUT_CLASSES}`}
-                                        placeholder="Scan or type serials, separated by comma or new line"
+                                        placeholder="Type serials, separated by comma or new line"
                                     />
                                     {itemStatuses[item.itemId]?.isLoading && <div className="flex items-center mt-1"><LoadingSpinner className="h-4 w-4 mr-2" /><span className="text-xs text-secondary-500">Processing file...</span></div>}
                                     {itemStatuses[item.itemId]?.error && <p className="text-xs text-red-500 mt-1">{itemStatuses[item.itemId].error}</p>}
@@ -221,33 +194,31 @@ const ReceivingModal: React.FC<ReceivingModalProps> = ({ isOpen, onClose, shipme
                     ))}
                 </div>
 
-                <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-secondary-700 dark:text-secondary-300 bg-secondary-100 dark:bg-secondary-600 hover:bg-secondary-200 dark:hover:bg-secondary-500 rounded-md shadow-sm" disabled={isSaving}>
+                <div className="flex justify-end space-x-2">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                    >
                         Cancel
                     </button>
                     <button
-                        type="button"
                         onClick={handleReceive}
-                        className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md shadow-sm disabled:opacity-50 flex items-center"
-                        disabled={isSaving || isLoadingDetails}
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-primary-500 dark:bg-primary-700 dark:hover:bg-primary-800 dark:focus:ring-primary-600 dark:focus:ring-offset-primary-600"
                     >
-                        {isSaving ? <LoadingSpinner className="w-5 h-5 mr-2" /> : null}
-                        {isSaving ? 'Processing...' : 'Complete Receiving'}
+                        {isSaving ? (
+                            <>
+                                <LoadingSpinner className="h-4 w-4 mr-2" />
+                                Receiving...
+                            </>
+                        ) : (
+                            'Receive Items'
+                        )}
                     </button>
                 </div>
             </div>
-
-            {/* Barcode Scanner */}
-            <BarcodeScanner
-                isOpen={isScannerOpen}
-                onScan={handleScan}
-                onClose={() => {
-                    setIsScannerOpen(false);
-                    setScanningForItemIndex(null);
-                }}
-                title="Scan Serial Number"
-            />
         </Modal>
     );
 };
+
 export default ReceivingModal;

@@ -1,7 +1,7 @@
 // backend/services/geminiServiceBackend.js
 const { GoogleGenAI } = require('@google/genai');
 
-const GEMINI_CHAT_MODEL_BACKEND = "gemini-2.5-flash-preview-04-17"; // Centralized model choice
+const GEMINI_CHAT_MODEL_BACKEND = "gemini-1.5-pro-latest"; // Centralized model choice
 
 const SYSTEM_INSTRUCTION_CHAT = `You are VisionBot, an AI assistant for Vision79 Shipment Inventory & Warehouse Manager. 
 Your goal is to help users understand and navigate the application, provide information about logistics and warehouse management concepts, and offer suggestions based on simulated data if applicable. 
@@ -113,7 +113,7 @@ const extractSerialsFromPdf = async (base64PdfData) => {
     };
 
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-04-17",
+        model: GEMINI_CHAT_MODEL_BACKEND,
         contents: { parts: [pdfPart, textPart] },
         config: { responseMimeType: "application/json" }
     });
@@ -259,6 +259,25 @@ const generateProcurementInsights = async (procurementData, marketTrends) => {
 
     return await generateJson(prompt);
 };
+
+// Utility: List available Gemini models using the current API key
+if (require.main === module) {
+    (async () => {
+        if (!ai) {
+            console.error('Gemini AI is not configured. Set GEMINI_API_KEY in your environment.');
+            process.exit(1);
+        }
+        try {
+            const models = await ai.models.list();
+            console.log('Available Gemini models:');
+            for (const model of models) {
+                console.log(`- ${model.name} (ID: ${model.id})`);
+            }
+        } catch (err) {
+            console.error('Failed to list Gemini models:', err);
+        }
+    })();
+}
 
 module.exports = {
     getChatStream,

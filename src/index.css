@@ -111,7 +111,8 @@ body {
     background-color: transparent;
   }
 }
-.dark @keyframes row-highlight-anim {
+
+@keyframes row-highlight-anim-dark {
   from {
     background-color: #1e3a8a; /* blue-900 */
   }
@@ -122,4 +123,8 @@ body {
 
 .animate-row-highlight {
   animation: row-highlight-anim 2s ease-out;
+}
+
+.dark .animate-row-highlight {
+  animation: row-highlight-anim-dark 2s ease-out;
 }

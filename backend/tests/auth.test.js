@@ -3,18 +3,17 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 
-// Mock the database connection
-jest.mock('pg', () => ({
-  Pool: jest.fn(),
-}));
+// Mock pg.Pool for Jest
+jest.mock('pg', () => {
+  const mPool = { connect: jest.fn(), query: jest.fn(), end: jest.fn() };
+  return { Pool: jest.fn(() => mPool) };
+});
 
 const mockPool = {
   query: jest.fn(),
   connect: jest.fn(),
   end: jest.fn(),
 };
-
-Pool.mockImplementation(() => mockPool);
 
 // Import the app after mocking
 const app = require('../server');
