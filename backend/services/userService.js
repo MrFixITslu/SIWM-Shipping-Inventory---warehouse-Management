@@ -90,21 +90,24 @@ const updateUser = async (userId, dataToUpdate, actingAdminId) => {
   const fields = [];
   const values = [];
   let paramIndex = 1;
+  let roleChanged = false;
   for (const key in dbData) {
       if (Object.hasOwnProperty.call(dbData, key)) {
           fields.push(`${key} = $${paramIndex++}`);
           values.push(dbData[key]);
+          if (key === 'role' && dbData[key] !== userToUpdate.role) {
+            roleChanged = true;
+          }
       }
   }
-
+  if (roleChanged) {
+    fields.push(`token_invalidated_at = CURRENT_TIMESTAMP`);
+  }
   if (fields.length === 0) return userToUpdate;
-
   values.push(userId);
   const queryText = `UPDATE users SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-  
   const res = await pool.query(queryText, values);
   const updatedUser = mapToCamel(res.rows[0]);
-  
   // Log specific changes
   if(dataToUpdate.role && dataToUpdate.role !== userToUpdate.role) {
     await logUserAction(actingAdminId, userId, 'GROUP_REASSIGNED', { from: userToUpdate.role, to: dataToUpdate.role });
@@ -118,7 +121,6 @@ const updateUser = async (userId, dataToUpdate, actingAdminId) => {
         await logUserAction(actingAdminId, userId, 'PERMISSIONS_UPDATED', { added, removed });
     }
   }
-
   delete updatedUser.password;
   return updatedUser;
 };
@@ -143,12 +145,9 @@ const updateUserGroup = async (userId, newRole, actingAdminId) => {
   const userToUpdate = await findUserById(userId);
   if (!userToUpdate) throw new Error('User not found');
    if (userToUpdate.id === actingAdminId) throw new Error('Admins cannot change their own role.');
-
-  const res = await pool.query('UPDATE users SET role = $1 WHERE id = $2 RETURNING *', [newRole, userId]);
-  
+  const res = await pool.query('UPDATE users SET role = $1, token_invalidated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *', [newRole, userId]);
   const updatedUser = mapToCamel(res.rows[0]);
   await logUserAction(actingAdminId, updatedUser.id, 'GROUP_REASSIGNED', { from: userToUpdate.role, to: updatedUser.role });
-
   delete updatedUser.password;
   return updatedUser;
 };

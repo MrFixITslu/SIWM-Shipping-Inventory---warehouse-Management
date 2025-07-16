@@ -127,27 +127,25 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           onClick={handleToggleDropdown}
           disabled={disabled}
           className="absolute right-0 top-0 h-full px-3 flex items-center text-secondary-400 hover:text-secondary-600 disabled:opacity-50"
+          title="Toggle dropdown"
         >
-          <ChevronDownIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDownIcon className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
       </div>
-      
       {isOpen && filteredOptions.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 w-full mt-1 bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md shadow-lg max-h-60 overflow-y-auto"
+          className="absolute z-10 mt-1 w-full bg-white dark:bg-secondary-800 border border-secondary-300 dark:border-secondary-600 rounded-md shadow-lg max-h-60 overflow-auto"
         >
-          {filteredOptions.map((option, index) => (
-            <button
+          {filteredOptions.map((option, idx) => (
+            <div
               key={option}
-              type="button"
-              onClick={() => handleOptionClick(option)}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-secondary-100 dark:hover:bg-secondary-700 focus:bg-secondary-100 dark:focus:bg-secondary-700 focus:outline-none ${
-                index === highlightedIndex ? 'bg-secondary-100 dark:bg-secondary-700' : ''
-              }`}
+              className={`px-4 py-2 cursor-pointer select-none ${idx === highlightedIndex ? 'bg-primary-100 dark:bg-primary-700 text-primary-800 dark:text-primary-100' : 'text-secondary-900 dark:text-secondary-100'}`}
+              onMouseDown={() => handleOptionClick(option)}
+              onMouseEnter={() => setHighlightedIndex(idx)}
             >
               {option}
-            </button>
+            </div>
           ))}
         </div>
       )}
@@ -155,4 +153,4 @@ const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   );
 };
 
-export default AutocompleteInput; 
+export default AutocompleteInput;

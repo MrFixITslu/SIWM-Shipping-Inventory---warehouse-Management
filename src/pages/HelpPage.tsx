@@ -14,6 +14,21 @@ const HelpPage: React.FC = () => {
   return (
     <PageContainer title="Vision79 SIWM - User Guide">
       <div className="prose dark:prose-invert max-w-none">
+        {/* Feature Overview */}
+        <h2 className={sectionTitleClass}>Feature Overview</h2>
+        <ul className={listClass}>
+          <li><strong>Role-Based Authentication:</strong> Secure login and permissions for different user roles.</li>
+          <li><strong>Dashboard:</strong> Real-time metrics, AI insights, and system health.</li>
+          <li><strong>Incoming Shipments (ASNs):</strong> Track, receive, and process shipments with financial workflow.</li>
+          <li><strong>Inventory Management:</strong> Manage stock, serialized/non-serialized items, and aged inventory.</li>
+          <li><strong>Warehouse Orders:</strong> Internal requests, picking, packing, and fulfillment.</li>
+          <li><strong>Dispatch & Logistics:</strong> Outbound shipments, route planning, and delivery tracking.</li>
+          <li><strong>Vendor & Asset Management:</strong> Supplier and equipment tracking with maintenance logs.</li>
+          <li><strong>Reporting & Analytics:</strong> Custom reports, exports, and AI-powered queries.</li>
+          <li><strong>Notifications:</strong> Real-time alerts and user-configurable preferences.</li>
+          <li><strong>VisionBot AI Chatbot:</strong> In-app assistant for help and logistics questions.</li>
+        </ul>
+
         <p className={paragraphClass}>
           Welcome to the {APP_NAME} User Guide! This guide will help you understand and effectively use the features of our comprehensive Shipment Inventory & Warehouse Management system.
         </p>
@@ -168,6 +183,54 @@ const HelpPage: React.FC = () => {
           <li>Type your question about {APP_NAME} features, logistics concepts, or how to perform a task.</li>
           <li>Press Enter or click the <strong className={stepClass}>Send Icon (Paper Airplane)</strong>.</li>
         </ol>
+
+        {/* AI-Powered Features */}
+        <h2 className={sectionTitleClass}>AI-Powered Features</h2>
+        <ul className={listClass}>
+          <li><strong>VisionBot Chatbot:</strong> Ask logistics, inventory, or app usage questions. Try "How do I receive a shipment?" or "Show me items below reorder point."</li>
+          <li><strong>AI Analytics:</strong> Use the reporting module to enter natural language queries (e.g., "Show inventory by category for last month").</li>
+          <li><strong>Route Optimization:</strong> In Dispatch & Logistics, use AI to suggest optimal shipping routes based on constraints.</li>
+          <li><strong>Inventory Forecasting:</strong> Predict stock needs and reorder points using historical data and trends.</li>
+        </ul>
+        <p className={paragraphClass}>AI features require a valid Gemini API key and may be limited by your user role.</p>
+
+        {/* Tips & Best Practices */}
+        <h2 className={sectionTitleClass}>Tips & Best Practices</h2>
+        <ul className={listClass}>
+          <li>Use filters and search bars to quickly find records in large tables.</li>
+          <li>Check notifications regularly for important system or workflow updates.</li>
+          <li>Admins should review user permissions after onboarding new users.</li>
+          <li>Use the export feature in reports to save data as PDF or CSV for audits.</li>
+          <li>For serialized items, scan barcodes where possible to avoid manual entry errors.</li>
+        </ul>
+
+        {/* Troubleshooting & FAQ */}
+        <h2 className={sectionTitleClass}>Troubleshooting & FAQ</h2>
+        <ul className={listClass}>
+          <li><strong>Failed to fetch dynamically imported module?</strong> Reload the page. If the issue persists, clear your browser cache and ensure you are accessing the app via the correct URL (not file://).</li>
+          <li><strong>Missing permissions?</strong> Contact your admin to review your assigned role and page permissions.</li>
+          <li><strong>Can’t see a module in the sidebar?</strong> You may not have permission. Ask your admin to update your access.</li>
+          <li><strong>Receiving errors on shipment or order actions?</strong> Double-check required fields and ensure you have the correct role for the action.</li>
+          <li><strong>How do I reset my password?</strong> Use the "Forgot Password" link on the login page or ask an admin to reset it for you.</li>
+        </ul>
+
+        {/* Security & Compliance */}
+        <h2 className={sectionTitleClass}>Security & Compliance</h2>
+        <ul className={listClass}>
+          <li>All data is encrypted in transit (HTTPS/SSL required in production).</li>
+          <li>Role-based access ensures users only see and do what they are permitted.</li>
+          <li>Audit logs track all critical actions for compliance and troubleshooting.</li>
+          <li>Regularly update your password and never share credentials.</li>
+          <li>Admins should periodically review user access and audit logs.</li>
+        </ul>
+
+        {/* Support & Feedback */}
+        <h2 className={sectionTitleClass}>Support & Feedback</h2>
+        <ul className={listClass}>
+          <li>For technical support, contact your system administrator or IT helpdesk.</li>
+          <li>For feature requests or bug reports, use the in-app feedback form or email the support team.</li>
+          <li>Consult the README and in-app tooltips for additional guidance.</li>
+        </ul>
 
         <p className={`${paragraphClass} mt-8`}>
           We hope this guide helps you make the most of {APP_NAME}! If you have further questions, try asking VisionBot.

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import ErrorMessage from '@/components/ErrorMessage';
 import { User } from '@/types';
+import { UserRole } from '@/types';
 import { userService } from '@/services/userService';
 import { USER_GROUPS } from '@/constants/permissions';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import UserPermissionsForm from './UserPermissionsForm';
 import { useAuth } from '@/contexts/AuthContext';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -26,6 +28,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
   const [resetPasswordLoading, setResetPasswordLoading] = useState(false);
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState<string | null>(null);
   const [resetPasswordError, setResetPasswordError] = useState<string | null>(null);
+  const [showRoleChangeConfirm, setShowRoleChangeConfirm] = useState(false);
+  const [pendingRole, setPendingRole] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const isEditing = !!user?.id;
 
@@ -57,6 +62,24 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
     });
   };
 
+  const handleRoleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { value } = e.target;
+    if (formData.role && value !== formData.role) {
+      setPendingRole(value);
+      setShowRoleChangeConfirm(true);
+    } else {
+      setFormData(prev => ({ ...prev, role: value as UserRole }));
+    }
+  };
+  const confirmRoleChange = () => {
+    setFormData(prev => ({ ...prev, role: pendingRole as UserRole }));
+    setShowRoleChangeConfirm(false);
+  };
+  const cancelRoleChange = () => {
+    setPendingRole(null);
+    setShowRoleChangeConfirm(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -64,6 +87,8 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
     try {
       if (isEditing) {
         await userService.updateUser(user!.id!, { role: formData.role, permissions: formData.permissions });
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
       } else {
         await userService.createUser({
           name: formData.name!,
@@ -72,6 +97,8 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
           role: formData.role!,
           permissions: formData.permissions!
         });
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
       }
       onSave();
     } catch (err: any) {
@@ -157,7 +184,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
                 id="user-role"
                 name="role" 
                 value={formData.role || ''} 
-                onChange={handleInputChange} 
+                onChange={handleRoleChange} 
                 required 
                 className={`mt-1 w-full ${TAILWIND_INPUT_CLASSES}`}
             >
@@ -197,6 +224,19 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, onSave, 
             {resetPasswordSuccess && <div className="text-green-600 dark:text-green-400 mt-2">{resetPasswordSuccess}</div>}
             {resetPasswordError && <div className="text-red-600 dark:text-red-400 mt-2">{resetPasswordError}</div>}
             <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">Minimum 6 characters.</p>
+          </div>
+        )}
+        <ConfirmationModal
+          isOpen={showRoleChangeConfirm}
+          onClose={cancelRoleChange}
+          onConfirm={confirmRoleChange}
+          title="Confirm Role Change"
+          message={`Are you sure you want to change this user's role to '${pendingRole}'? This will force the user to re-login and update their permissions immediately.`}
+          confirmButtonText="Yes, change role"
+        />
+        {showSuccess && (
+          <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50">
+            User updated successfully.
           </div>
         )}
         <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">

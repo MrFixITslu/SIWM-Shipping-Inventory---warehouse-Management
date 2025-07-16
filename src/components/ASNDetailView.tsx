@@ -1,8 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { ASN, User, FeeStatus } from '@/types';
-import { CloseIcon, CurrencyDollarIcon, CheckBadgeIcon, ShipmentIcon } from '@/constants';
+import { CloseIcon, CurrencyDollarIcon, CheckBadgeIcon, ShipmentIcon, DocumentTextIcon } from '@/constants';
 import { useNavigate } from 'react-router-dom';
 import { inventoryService } from '@/services/inventoryService';
+
+// Helper to get file icon by extension
+const getFileIcon = (fileName: string) => {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  if (!ext) return <DocumentTextIcon className="w-5 h-5 text-secondary-400 inline-block mr-1" />;
+  if (["pdf"].includes(ext)) return <DocumentTextIcon className="w-5 h-5 text-red-500 inline-block mr-1" />;
+  if (["doc", "docx"].includes(ext)) return <DocumentTextIcon className="w-5 h-5 text-blue-500 inline-block mr-1" />;
+  if (["jpg", "jpeg", "png"].includes(ext)) return <DocumentTextIcon className="w-5 h-5 text-green-500 inline-block mr-1" />;
+  return <DocumentTextIcon className="w-5 h-5 text-secondary-400 inline-block mr-1" />;
+};
+
+// Helper to check if file is PDF
+const isPdf = (fileName: string) => fileName.toLowerCase().endsWith('.pdf');
+// Helper to get base64 size in bytes
+const base64Size = (base64: string) => Math.ceil((base64.length * 3) / 4) - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0);
 
 interface ASNDetailViewProps {
   asn: ASN; 
@@ -255,6 +270,91 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                     <h4 className="font-semibold text-secondary-700 dark:text-secondary-300">Next Step</h4>
                     <WorkflowActions />
                 </div>
+            </div>
+
+            {/* File Downloads Section */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* P.O. */}
+              {asn.poFileData && asn.poFileName && (
+                <div>
+                  <span className="block text-xs text-secondary-500 mb-1">P.O.</span>
+                  <a
+                    href={`data:application/octet-stream;base64,${asn.poFileData}`}
+                    download={asn.poFileName}
+                    className="text-primary-600 hover:underline text-sm flex items-center"
+                    title="Download file"
+                    aria-label="Download file"
+                  >
+                    {getFileIcon(asn.poFileName)}{asn.poFileName}
+                  </a>
+                  {/* PDF Preview */}
+                  {isPdf(asn.poFileName) && base64Size(asn.poFileData) < 2 * 1024 * 1024 && (
+                    <div className="mt-2 border rounded overflow-hidden">
+                      <embed
+                        src={`data:application/pdf;base64,${asn.poFileData}`}
+                        type="application/pdf"
+                        width="100%"
+                        height="300px"
+                        className="rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Invoice: use vendorInvoiceData/vendorInvoiceName */}
+              {asn.vendorInvoiceData && asn.vendorInvoiceName && (
+                <div>
+                  <span className="block text-xs text-secondary-500 mb-1">Invoice</span>
+                  <a
+                    href={`data:application/octet-stream;base64,${asn.vendorInvoiceData}`}
+                    download={asn.vendorInvoiceName}
+                    className="text-primary-600 hover:underline text-sm flex items-center"
+                    title="Download file"
+                    aria-label="Download file"
+                  >
+                    {getFileIcon(asn.vendorInvoiceName)}{asn.vendorInvoiceName}
+                  </a>
+                  {/* PDF Preview */}
+                  {isPdf(asn.vendorInvoiceName) && base64Size(asn.vendorInvoiceData) < 2 * 1024 * 1024 && (
+                    <div className="mt-2 border rounded overflow-hidden">
+                      <embed
+                        src={`data:application/pdf;base64,${asn.vendorInvoiceData}`}
+                        type="application/pdf"
+                        width="100%"
+                        height="300px"
+                        className="rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Bill of Lading */}
+              {asn.billOfLadingData && asn.billOfLadingName && (
+                <div>
+                  <span className="block text-xs text-secondary-500 mb-1">Bill of Lading</span>
+                  <a
+                    href={`data:application/octet-stream;base64,${asn.billOfLadingData}`}
+                    download={asn.billOfLadingName}
+                    className="text-primary-600 hover:underline text-sm flex items-center"
+                    title="Download file"
+                    aria-label="Download file"
+                  >
+                    {getFileIcon(asn.billOfLadingName)}{asn.billOfLadingName}
+                  </a>
+                  {/* PDF Preview */}
+                  {isPdf(asn.billOfLadingName) && base64Size(asn.billOfLadingData) < 2 * 1024 * 1024 && (
+                    <div className="mt-2 border rounded overflow-hidden">
+                      <embed
+                        src={`data:application/pdf;base64,${asn.billOfLadingData}`}
+                        type="application/pdf"
+                        width="100%"
+                        height="300px"
+                        className="rounded"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Received Items Section - Show when items have been added to inventory */}

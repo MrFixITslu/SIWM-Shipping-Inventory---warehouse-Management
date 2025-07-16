@@ -1,24 +1,86 @@
 # Vision79 Shipment Inventory & Warehouse Management (SIWM)
 
-Vision79 SIWM is a modern, full-stack web application designed to provide a comprehensive solution for managing shipments, inventory, and warehouse operations. It features a React-based frontend, a Node.js backend with a PostgreSQL database, and AI-powered insights via the Gemini API.
+Vision79 SIWM is a modern, full-stack web application for managing shipments, inventory, and warehouse operations. It features a React-based frontend, a Node.js backend with a PostgreSQL database, and AI-powered insights via the Gemini API.
 
-## Features
+---
 
-- **Role-Based Authentication**: Secure login for admins, managers, and users.
-- **Dashboard**: At-a-glance view of key metrics and AI-driven operational insights.
-- **End-to-End Logistics**: Manage Incoming Shipments (ASNs), Inventory (serialized and non-serialized), Warehouse Orders, and Dispatch.
-- **Vendor & Asset Management**: Track suppliers and internal warehouse assets with maintenance logs.
-- **Real-time Updates**: User interface updates instantly across all clients using Server-Sent Events (SSE).
-- **Reporting & Analytics**: Generate detailed reports with an AI-powered natural language query interface.
-- **AI Chatbot**: An integrated "VisionBot" to assist users with application features and logistics questions.
-- **Notifications**: A full notification center with user-configurable preferences.
+## 🚀 Feature Overview
+
+- **Role-Based Authentication:** Secure login and permissions for different user roles (Admin, Manager, Warehouse, Broker, Finance, Technician, Requester).
+- **Dashboard:** Real-time metrics, AI insights, and system health at a glance.
+- **Incoming Shipments (ASNs):** Track, receive, and process shipments with a financial approval workflow.
+- **Inventory Management:** Manage stock, serialized/non-serialized items, and aged inventory. Real-time updates and smart intake.
+- **Warehouse Orders:** Internal requests, picking, packing, and fulfillment workflows.
+- **Dispatch & Logistics:** Outbound shipments, route planning, and delivery tracking with AI-powered optimization.
+- **Vendor & Asset Management:** Supplier and equipment tracking with maintenance logs.
+- **Reporting & Analytics:** Custom reports, exports, and AI-powered natural language queries.
+- **Notifications:** Real-time alerts and user-configurable preferences.
+- **VisionBot AI Chatbot:** In-app assistant for help, logistics questions, and workflow guidance.
+
+---
+
+## 🤖 AI-Powered Features
+
+- **VisionBot Chatbot:** Ask logistics, inventory, or app usage questions. Try "How do I receive a shipment?" or "Show me items below reorder point."
+- **AI Analytics:** Use the reporting module to enter natural language queries (e.g., "Show inventory by category for last month").
+- **Route Optimization:** In Dispatch & Logistics, use AI to suggest optimal shipping routes based on constraints.
+- **Inventory Forecasting:** Predict stock needs and reorder points using historical data and trends.
+- **Supplier Performance Analysis:** AI-driven supplier evaluation and recommendations.
+- **Warehouse Layout Optimization:** Intelligent space utilization and pick path suggestions.
+
+---
+
+## 📋 Best Practices & Tips
+
+- Use filters and search bars to quickly find records in large tables.
+- Check notifications regularly for important system or workflow updates.
+- Admins should review user permissions after onboarding new users.
+- Use the export feature in reports to save data as PDF or CSV for audits.
+- For serialized items, scan barcodes where possible to avoid manual entry errors.
+- Consult the in-app Help page for step-by-step guides and workflow explanations.
+
+---
+
+## 🛠️ Troubleshooting & FAQ
+
+- **Failed to fetch dynamically imported module?** Reload the page. If the issue persists, clear your browser cache and ensure you are accessing the app via the correct URL (not file://).
+- **Missing permissions?** Contact your admin to review your assigned role and page permissions.
+- **Can’t see a module in the sidebar?** You may not have permission. Ask your admin to update your access.
+- **Receiving errors on shipment or order actions?** Double-check required fields and ensure you have the correct role for the action.
+- **How do I reset my password?** Use the "Forgot Password" link on the login page or ask an admin to reset it for you.
+
+---
+
+## 🔒 Security & Compliance
+
+- All data is encrypted in transit (HTTPS/SSL required in production).
+- Role-based access ensures users only see and do what they are permitted.
+- Audit logs track all critical actions for compliance and troubleshooting.
+- Regularly update your password and never share credentials.
+- Admins should periodically review user access and audit logs.
+
+---
+
+## 💬 Support & Feedback
+
+- For technical support, contact your system administrator or IT helpdesk.
+- For feature requests or bug reports, use the in-app feedback form or email the support team.
+- Consult the in-app Help page and tooltips for additional guidance.
+
+---
+
+## 📖 User Guide
+
+For a detailed, step-by-step user guide, see the in-app **Help** page (accessible from the sidebar) or review `src/pages/HelpPage.tsx` for the latest documentation on workflows, permissions, and best practices.
+
+---
 
 ## Tech Stack
 
-- **Frontend**: React, TypeScript, [Vite](https://vite.dev/guide/), Tailwind CSS, Recharts
-- **Backend**: Node.js, Express.js
-- **Database**: PostgreSQL with `node-pg-migrate` for schema management.
-- **AI**: Google Gemini API
+- **Frontend:** React, TypeScript, [Vite](https://vite.dev/guide/), Tailwind CSS, Recharts
+- **Backend:** Node.js, Express.js
+- **Database:** PostgreSQL with `node-pg-migrate` for schema management.
+- **AI:** Google Gemini API
 
 ---
 

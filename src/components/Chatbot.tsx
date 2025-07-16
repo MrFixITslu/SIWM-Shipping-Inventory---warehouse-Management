@@ -234,8 +234,13 @@ const Chatbot: React.FC = () => {
                 type="submit"
                 disabled={isLoading || inputValue.trim() === ''}
                 className="p-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Send message"
+                aria-label="Send message"
               >
-                {isLoading ? <LoadingSpinner className="w-5 h-5" /> : <PaperAirplaneIcon className="h-5 w-5 transform rotate-45" />}
+                {isLoading ? <LoadingSpinner className="w-5 h-5" /> : <>
+                  <span className="sr-only">Send</span>
+                  <PaperAirplaneIcon className="h-5 w-5 transform rotate-45" />
+                </>}
               </button>
             </form>
           </div>

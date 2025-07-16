@@ -272,6 +272,7 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+              title="Select support topic"
             >
               <option value="all">All Status</option>
               <option value="open">Open</option>
@@ -289,6 +290,7 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
               className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+              title="Select support topic"
             >
               <option value="all">All Priorities</option>
               <option value="critical">Critical</option>
@@ -306,6 +308,7 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+              title="Select support topic"
             >
               <option value="all">All Categories</option>
               <option value="technical">Technical</option>
@@ -394,6 +397,7 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
                 value={newTicket.category}
                 onChange={(e) => setNewTicket(prev => ({ ...prev, category: e.target.value as any }))}
                 className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+                title="Select support topic"
               >
                 <option value="technical">Technical</option>
                 <option value="billing">Billing</option>
@@ -411,6 +415,7 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
                 value={newTicket.priority}
                 onChange={(e) => setNewTicket(prev => ({ ...prev, priority: e.target.value as any }))}
                 className="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-md bg-white dark:bg-secondary-700 text-secondary-900 dark:text-secondary-100"
+                title="Select support topic"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -431,8 +436,12 @@ const CustomerSupportPage: React.FC<CustomerSupportPageProps> = () => {
               onClick={handleCreateTicket}
               disabled={isSaving || !newTicket.title || !newTicket.description}
               className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md disabled:opacity-50"
+              title="Submit support request"
             >
-              {isSaving ? <LoadingSpinner className="w-4 h-4" /> : 'Create Ticket'}
+              {isSaving ? <LoadingSpinner className="w-4 h-4" /> : <>
+                <span className="sr-only">Submit</span>
+                Create Ticket
+              </>}
             </button>
           </div>
         </div>

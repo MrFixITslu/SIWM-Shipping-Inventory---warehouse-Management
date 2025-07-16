@@ -195,13 +195,14 @@ const PickingModal: React.FC<PickingModalProps> = ({ isOpen, onClose, order, onP
                                         </button>
                                         <input type="file" ref={el => {fileInputRefs.current[index] = el;}} style={{ display: 'none' }} accept=".csv,.pdf" onChange={(e) => handleFileSelect(e, index)} />
                                     </div>
+                                    <label htmlFor={`serials-${item.itemId}`} className="sr-only">Pick value</label>
                                     <textarea
                                         id={`serials-${item.itemId}`}
                                         rows={2}
                                         value={item.pickedSerialsString}
                                         onChange={(e) => handleItemChange(index, e.target.value)}
                                         className={`block w-full ${TAILWIND_INPUT_CLASSES}`}
-                                        placeholder="Scan or type serial numbers, separated by comma or new line"
+                                        placeholder="Enter value"
                                     />
                                     {item.availableSerials && item.availableSerials.length > 0 && (
                                         <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">

@@ -38,6 +38,7 @@ const IncomingShipmentsPage: React.FC = () => {
   const [currentAsn, setCurrentAsn] = useState<Partial<ASN>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
   const { isModalOpen: isConfirmDeleteOpen, confirmButtonText, showConfirmation: showDeleteConfirmation, handleConfirm: handleConfirmDelete, handleClose: handleCloseDeleteConfirm } = useConfirmationModal();
@@ -58,6 +59,10 @@ const IncomingShipmentsPage: React.FC = () => {
   const modalContentRef = useRef<HTMLDivElement>(null);
 
   const [inventoryMap, setInventoryMap] = useState<Record<number, string>>({});
+  const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const [poFile, setPoFile] = useState<File | null>(null);
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [bolFile, setBolFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchInventory = async () => {
@@ -312,26 +317,51 @@ const IncomingShipmentsPage: React.FC = () => {
     setError(null);
     setIsSaving(true);
     try {
-      const asnToSave: Partial<ASN> = { ...currentAsn };
-      
-      if (!asnToSave.poNumber || !asnToSave.supplier || !asnToSave.expectedArrival || !asnToSave.carrier || !asnToSave.brokerId) {
-        throw new Error('PO Number, Supplier, Expected Arrival, Carrier, and Broker are required fields.');
+      const asnToSave: any = { ...currentAsn };
+      // Validate required fields
+      if (!asnToSave.poNumber || !asnToSave.supplier || !asnToSave.expectedArrival || !asnToSave.carrier || !asnToSave.department) {
+        throw new Error('PO Number, Supplier, Department, Expected Arrival, and Carrier are required fields.');
       }
-      
-      if (asnToSave.id) {
-        await asnService.updateASN(asnToSave.id, asnToSave);
-      } else {
-        await asnService.createASN(asnToSave as Omit<ASN, 'id'>);
+      // Convert itemCount to number if it's a string
+      if (asnToSave.itemCount !== undefined) {
+        if (typeof asnToSave.itemCount === 'string') {
+          const parsedItemCount = parseInt(asnToSave.itemCount, 10);
+          if (isNaN(parsedItemCount) || parsedItemCount < 0) {
+            throw new Error('Item count must be a valid non-negative number.');
+          }
+          asnToSave.itemCount = parsedItemCount;
+        } else if (typeof asnToSave.itemCount !== 'number' || asnToSave.itemCount < 0) {
+          throw new Error('Item count must be a valid non-negative number.');
+        }
       }
-      // No need to call fetchData() here, as real-time update will handle it.
-      handleCloseModal();
+      // Convert brokerId to number if it's a string
+      if (asnToSave.brokerId && typeof asnToSave.brokerId === 'string') {
+        const parsedBrokerId = parseInt(asnToSave.brokerId, 10);
+        if (isNaN(parsedBrokerId)) {
+          throw new Error('Invalid broker ID format.');
+        }
+        asnToSave.brokerId = parsedBrokerId;
+      }
+      // Attach files
+      asnToSave.quoteFile = quoteFile;
+      asnToSave.poFile = poFile;
+      asnToSave.invoiceFile = invoiceFile;
+      asnToSave.bolFile = bolFile;
+      // If no brokers are available, set a default broker or make it optional
+      if (!asnToSave.brokerId && brokers.length > 0) {
+        asnToSave.brokerId = brokers[0].id;
+        asnToSave.brokerName = brokers[0].name;
+      }
+      await asnService.createASN(asnToSave);
+      setIsModalOpen(false);
+      setCurrentAsn({});
+      setQuoteFile(null);
+      setPoFile(null);
+      setInvoiceFile(null);
+      setBolFile(null);
+      fetchData();
     } catch (err: any) {
-      let userFriendlyError = "An unexpected error occurred.";
-      if (err.message) {
-        userFriendlyError = err.message;
-      }
-      setError(userFriendlyError);
-      modalContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      setError(err.message || 'Failed to save shipment.');
     } finally {
       setIsSaving(false);
     }
@@ -488,6 +518,36 @@ const IncomingShipmentsPage: React.FC = () => {
     ) },
   ];
 
+  // File validation helpers
+  const MAX_FILE_SIZE_MB = 10;
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+  ];
+
+  const handleFileChange = (setter: (file: File | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+        setFileError(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB}MB.`);
+        setter(null);
+        return;
+      }
+      if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+        setFileError('Invalid file type. Only PDF, Word, JPG, and PNG files are allowed.');
+        setter(null);
+        return;
+      }
+      setFileError(null);
+      setter(file);
+    } else {
+      setter(null);
+    }
+  };
+
   return (
     <PageContainer
       title="Incoming Shipments (ASNs)"
@@ -588,6 +648,35 @@ const IncomingShipmentsPage: React.FC = () => {
                       <option value="">Select Department</option>
                       {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
+              </div>
+            </div>
+            {/* File Uploads for Quotes, P.O.s, Invoices, Bill of Lading */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="quoteFile" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Upload Quote</label>
+                <input type="file" id="quoteFile" name="quoteFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileChange(setQuoteFile)} className="mt-1 block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-secondary-700 dark:file:text-secondary-200 dark:hover:file:bg-secondary-600" />
+                {quoteFile && <p className="text-xs text-secondary-500 mt-1">File selected: {quoteFile.name}</p>}
+                {fileError && <div className="text-red-600 text-xs mt-2">{fileError}</div>}
+              </div>
+              <div>
+                <label htmlFor="poFile" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Upload P.O.</label>
+                <input type="file" id="poFile" name="poFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileChange(setPoFile)} className="mt-1 block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-secondary-700 dark:file:text-secondary-200 dark:hover:file:bg-secondary-600" />
+                {poFile && <p className="text-xs text-secondary-500 mt-1">File selected: {poFile.name}</p>}
+                {fileError && <div className="text-red-600 text-xs mt-2">{fileError}</div>}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="invoiceFile" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Upload Invoice</label>
+                <input type="file" id="invoiceFile" name="invoiceFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileChange(setInvoiceFile)} className="mt-1 block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-secondary-700 dark:file:text-secondary-200 dark:hover:file:bg-secondary-600" />
+                {invoiceFile && <p className="text-xs text-secondary-500 mt-1">File selected: {invoiceFile.name}</p>}
+                {fileError && <div className="text-red-600 text-xs mt-2">{fileError}</div>}
+              </div>
+              <div>
+                <label htmlFor="bolFile" className="block text-sm font-medium text-secondary-700 dark:text-secondary-300">Upload Bill of Lading</label>
+                <input type="file" id="bolFile" name="bolFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleFileChange(setBolFile)} className="mt-1 block w-full text-sm text-secondary-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100 dark:file:bg-secondary-700 dark:file:text-secondary-200 dark:hover:file:bg-secondary-600" />
+                {bolFile && <p className="text-xs text-secondary-500 mt-1">File selected: {bolFile.name}</p>}
+                {fileError && <div className="text-red-600 text-xs mt-2">{fileError}</div>}
               </div>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

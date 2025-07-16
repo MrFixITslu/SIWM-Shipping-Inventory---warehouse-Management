@@ -64,11 +64,11 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <AuthProvider>
           <MainApp />
-        </HashRouter>
-      </AuthProvider>
+        </AuthProvider>
+      </HashRouter>
     </ErrorBoundary>
   );
 };
@@ -91,6 +91,14 @@ const MainApp: React.FC = () => {
   
   return (
     <div className={`${isDarkMode ? 'dark' : ''}`}>
+      <ErrorBoundary fallback={
+        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+          <div>Error loading page or module.<br/>This may be due to a missing or outdated chunk file.<br/></div>
+          <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+            Reload
+          </button>
+        </div>
+      }>
         <Suspense fallback={<PageLoadingFallback />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -128,7 +136,8 @@ const MainApp: React.FC = () => {
             </Route>
           </Routes>
         </Suspense>
-      </div>
+      </ErrorBoundary>
+    </div>
   );
 };
 

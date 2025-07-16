@@ -2,6 +2,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback, ReactNode } from 'react';
 import { authService } from '@/services/authService'; 
 import { User, AuthContextType as IAuthContextType, UserRole } from '@/types'; 
+import { useNavigate } from 'react-router-dom';
 
 export const AuthContext = createContext<IAuthContextType | undefined>(undefined);
 
@@ -13,6 +14,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true); // For initial auth check
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkUserLoggedIn = () => {
@@ -67,6 +69,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setToken(null);
     // No need to setIsLoadingAuth here unless logout involves async operations
   }, []);
+
+  // Place this useEffect after logout and navigate are defined
+  useEffect(() => {
+    const handler = (event: any) => {
+      if (event?.detail?.forceLogout) {
+        logout();
+        navigate('/login', { state: { message: event.detail.message || 'Session expired. Please log in again.' } });
+      }
+    };
+    window.addEventListener('forceLogout', handler);
+    return () => window.removeEventListener('forceLogout', handler);
+  }, [logout, navigate]);
 
   const value = {
     user,

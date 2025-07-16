@@ -246,14 +246,15 @@ const SerialManagementModal: React.FC<SerialManagementModalProps> = ({ isOpen, o
             Add New Serial Numbers
           </label>
           <div className="mt-1 flex rounded-md shadow-sm">
+            <label htmlFor="serial-input-268" className="sr-only">Serial number</label>
             <input
               type="text"
               name="newSerial"
-              id="newSerial"
+              id="serial-input-268"
               value={newSerial}
               onChange={(e) => { setNewSerial(e.target.value); if (error) setError(''); }}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSerial())}
-              placeholder="Enter serial numbers separated by spaces (e.g., ABC123 DEF456 GHI789)"
+              placeholder="Enter serial number"
               className={`flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md ${TAILWIND_INPUT_CLASSES} focus:z-10 sm:text-sm`}
             />
             <button
@@ -293,8 +294,9 @@ const SerialManagementModal: React.FC<SerialManagementModalProps> = ({ isOpen, o
                     <SerialIcon className="h-4 w-4 mr-2 text-blue-500" />
                     {serial}
                   </span>
-                  <button onClick={() => handleDeleteSerial(serial)} className="text-red-500 hover:text-red-700 p-1 rounded-full">
+                  <button onClick={() => handleDeleteSerial(serial)} className="text-red-500 hover:text-red-700 p-1 rounded-full" title="Remove serial">
                     <DeleteIcon className="h-4 w-4" />
+                    <span className="sr-only">Remove</span>
                   </button>
                 </div>
               ))}

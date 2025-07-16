@@ -30,6 +30,14 @@ const protect = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ message: 'Not authorized, user not found' });
     }
+    // Check for forced re-login (token invalidation)
+    if (user.token_invalidated_at) {
+      const tokenIssuedAt = decoded.iat ? decoded.iat * 1000 : 0; // JWT iat is in seconds
+      const invalidatedAt = new Date(user.token_invalidated_at).getTime();
+      if (tokenIssuedAt < invalidatedAt) {
+        return res.status(401).json({ message: 'Session expired due to role or permission change. Please log in again.' });
+      }
+    }
     req.user = user;
 
     next();

@@ -10,6 +10,14 @@ async function handleResponse(response: Response) {
   const errorData = await response.json().catch(() => ({ 
     message: `Request failed with status ${response.status}: ${response.statusText}` 
   }));
+  // Detect forced re-login error
+  if (errorData.message && errorData.message.includes('Session expired due to role or permission change')) {
+    const err = new Error(errorData.message);
+    (err as any).forceLogout = true;
+    // Dispatch a custom event for global handling
+    window.dispatchEvent(new CustomEvent('forceLogout', { detail: { forceLogout: true, message: errorData.message } }));
+    throw err;
+  }
   throw new Error(errorData.message || 'An unknown API error occurred');
 }
 
