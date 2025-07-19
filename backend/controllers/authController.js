@@ -3,6 +3,13 @@
 // backend/controllers/authController.js
 const userService = require('../services/userService');
 const generateToken = require('../utils/generateToken');
+const { body, validationResult } = require('express-validator');
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Password validation: minimum 8 chars, at least one uppercase, one lowercase, one number
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
 
 // @desc    Register a new user
 // @route   POST /api/v1/auth/register
@@ -10,20 +17,39 @@ const generateToken = require('../utils/generateToken');
 const registerUser = async (req, res, next) => {
   const { name, email, password, role } = req.body;
 
-  // Basic Input Validation
+  // Enhanced Input Validation
   if (!name || !email || !password) {
     res.status(400);
     return next(new Error('Please add all fields: name, email, password'));
   }
+  
   if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
     res.status(400);
     return next(new Error('Name, email, and password must be strings.'));
   }
+  
+  // Email format validation
+  if (!EMAIL_REGEX.test(email)) {
+    res.status(400);
+    return next(new Error('Please provide a valid email address.'));
+  }
+  
+  // Password strength validation
+  if (!PASSWORD_REGEX.test(password)) {
+    res.status(400);
+    return next(new Error('Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.'));
+  }
+  
+  // Name validation (alphanumeric and spaces only, 2-50 chars)
+  if (!/^[a-zA-Z0-9\s]{2,50}$/.test(name)) {
+    res.status(400);
+    return next(new Error('Name must be 2-50 characters long and contain only letters, numbers, and spaces.'));
+  }
+  
   if (role && typeof role !== 'string') {
      res.status(400);
      return next(new Error('Role must be a string if provided.'));
   }
-  // Add email format validation if desired
 
   try {
     const userExists = await userService.findUserByEmail(email);
@@ -61,14 +87,21 @@ const authUser = async (req, res, next) => {
   const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
   const password = req.body.password;
 
-  // Basic Input Validation
+  // Enhanced Input Validation
   if (!email || !password) {
     res.status(400);
     return next(new Error('Please provide email and password'));
   }
+  
   if (typeof email !== 'string' || typeof password !== 'string') {
     res.status(400);
     return next(new Error('Email and password must be strings.'));
+  }
+  
+  // Email format validation
+  if (!EMAIL_REGEX.test(email)) {
+    res.status(400);
+    return next(new Error('Please provide a valid email address.'));
   }
 
   try {
@@ -129,28 +162,13 @@ const getUserProfile = async (req, res, next) => {
   }
 };
 
-// @desc    Public password reset (forgot password)
-// @route   POST /api/v1/auth/reset-password
-// @access  Public
+// @desc    Public password reset (forgot password) - REMOVED FOR SECURITY
+// This endpoint is a security risk and should be replaced with a proper
+// email-based password reset flow
 const resetPasswordPublic = async (req, res, next) => {
-  const { email, newPassword } = req.body;
-  if (!email || !newPassword || typeof email !== 'string' || typeof newPassword !== 'string' || newPassword.length < 6) {
-    res.status(400);
-    return next(new Error('Email and a new password (min 6 chars) are required.'));
-  }
-  try {
-    const user = await userService.findUserByEmail(email);
-    if (!user) {
-      // For security, do not reveal if the email exists
-      return res.status(200).json({ message: 'If the email exists, the password has been reset.' });
-    }
-    const salt = await require('bcryptjs').genSalt(10);
-    const hashedPassword = await require('bcryptjs').hash(newPassword, salt);
-    await require('../config/db').getPool().query('UPDATE users SET password = $1 WHERE email = $2', [hashedPassword, email]);
-    return res.status(200).json({ message: 'If the email exists, the password has been reset.' });
-  } catch (error) {
-    next(error);
-  }
+  res.status(501).json({ 
+    message: 'Password reset via API is disabled for security reasons. Please contact your administrator.' 
+  });
 };
 
 module.exports = {

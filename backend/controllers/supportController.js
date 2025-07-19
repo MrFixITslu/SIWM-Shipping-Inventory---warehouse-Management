@@ -2,6 +2,17 @@
 const { getPool } = require('../config/db');
 const { mapToCamel } = require('../utils/dbMappers');
 
+// Input sanitization function
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input.replace(/[<>'"]/g, '').trim();
+};
+
+// Valid filter values
+const VALID_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const VALID_PRIORITIES = ['low', 'medium', 'high', 'critical'];
+const VALID_CATEGORIES = ['technical', 'logistics', 'inventory', 'billing', 'general'];
+
 // Get all support tickets
 const getSupportTickets = async (req, res) => {
   try {
@@ -28,28 +39,31 @@ const getSupportTickets = async (req, res) => {
     const params = [];
     let paramCount = 0;
 
-    if (status && status !== 'all') {
+    if (status && status !== 'all' && VALID_STATUSES.includes(status)) {
       paramCount++;
       query += ` AND st.status = $${paramCount}`;
       params.push(status);
     }
 
-    if (priority && priority !== 'all') {
+    if (priority && priority !== 'all' && VALID_PRIORITIES.includes(priority)) {
       paramCount++;
       query += ` AND st.priority = $${paramCount}`;
       params.push(priority);
     }
 
-    if (category && category !== 'all') {
+    if (category && category !== 'all' && VALID_CATEGORIES.includes(category)) {
       paramCount++;
       query += ` AND st.category = $${paramCount}`;
       params.push(category);
     }
 
-    if (search) {
-      paramCount++;
-      query += ` AND (st.title ILIKE $${paramCount} OR st.ticket_number ILIKE $${paramCount})`;
-      params.push(`%${search}%`);
+    if (search && typeof search === 'string') {
+      const sanitizedSearch = sanitizeInput(search);
+      if (sanitizedSearch.length > 0) {
+        paramCount++;
+        query += ` AND (st.title ILIKE $${paramCount} OR st.ticket_number ILIKE $${paramCount})`;
+        params.push(`%${sanitizedSearch}%`);
+      }
     }
 
     query += ` ORDER BY st.created_at DESC`;
@@ -63,14 +77,165 @@ const getSupportTickets = async (req, res) => {
   }
 };
 
+// Create a new support ticket
+const createSupportTicket = async (req, res) => {
+  try {
+    const { title, description, priority, category, relatedOrderId, relatedShipmentId, warehouseId } = req.body;
+    const pool = getPool();
+    
+    // Validate required fields
+    if (!title || !description || !priority || !category) {
+      return res.status(400).json({ message: 'Title, description, priority, and category are required' });
+    }
+    
+    // Validate input values
+    if (!VALID_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ message: 'Invalid priority value' });
+    }
+    
+    if (!VALID_CATEGORIES.includes(category)) {
+      return res.status(400).json({ message: 'Invalid category value' });
+    }
+    
+    // Sanitize inputs
+    const sanitizedTitle = sanitizeInput(title);
+    const sanitizedDescription = sanitizeInput(description);
+    
+    if (sanitizedTitle.length < 5 || sanitizedTitle.length > 200) {
+      return res.status(400).json({ message: 'Title must be between 5 and 200 characters' });
+    }
+    
+    if (sanitizedDescription.length < 10 || sanitizedDescription.length > 2000) {
+      return res.status(400).json({ message: 'Description must be between 10 and 2000 characters' });
+    }
+    
+    const ticketNumber = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    const result = await pool.query(
+      `INSERT INTO support_tickets 
+       (ticket_number, title, description, priority, category, status, created_by, related_order_id, related_shipment_id, warehouse_id, created_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()) 
+       RETURNING *`,
+      [
+        ticketNumber,
+        sanitizedTitle,
+        sanitizedDescription,
+        priority,
+        category,
+        'open',
+        req.user.id,
+        relatedOrderId || null,
+        relatedShipmentId || null,
+        warehouseId || null
+      ]
+    );
+    
+    const ticket = mapToCamel(result.rows[0]);
+    res.status(201).json({ ticket });
+  } catch (error) {
+    console.error('Error creating support ticket:', error);
+    res.status(500).json({ message: 'Failed to create support ticket' });
+  }
+};
+
+// Update a support ticket
+const updateSupportTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, priority, assignedTo, notes } = req.body;
+    const pool = getPool();
+    
+    // Validate ticket ID
+    const ticketId = parseInt(id, 10);
+    if (isNaN(ticketId) || ticketId <= 0) {
+      return res.status(400).json({ message: 'Invalid ticket ID' });
+    }
+    
+    // Validate status if provided
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+    
+    // Validate priority if provided
+    if (priority && !VALID_PRIORITIES.includes(priority)) {
+      return res.status(400).json({ message: 'Invalid priority value' });
+    }
+    
+    // Build update query dynamically
+    const updateFields = [];
+    const params = [];
+    let paramCount = 0;
+    
+    if (status) {
+      paramCount++;
+      updateFields.push(`status = $${paramCount}`);
+      params.push(status);
+    }
+    
+    if (priority) {
+      paramCount++;
+      updateFields.push(`priority = $${paramCount}`);
+      params.push(priority);
+    }
+    
+    if (assignedTo !== undefined) {
+      paramCount++;
+      updateFields.push(`assigned_to = $${paramCount}`);
+      params.push(assignedTo);
+    }
+    
+    if (notes && typeof notes === 'string') {
+      const sanitizedNotes = sanitizeInput(notes);
+      if (sanitizedNotes.length > 0) {
+        paramCount++;
+        updateFields.push(`notes = $${paramCount}`);
+        params.push(sanitizedNotes);
+      }
+    }
+    
+    if (updateFields.length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+    
+    paramCount++;
+    updateFields.push(`updated_at = NOW()`);
+    params.push(ticketId);
+    
+    const query = `
+      UPDATE support_tickets 
+      SET ${updateFields.join(', ')} 
+      WHERE id = $${paramCount} 
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, params);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'Support ticket not found' });
+    }
+    
+    const ticket = mapToCamel(result.rows[0]);
+    res.json({ ticket });
+  } catch (error) {
+    console.error('Error updating support ticket:', error);
+    res.status(500).json({ message: 'Failed to update support ticket' });
+  }
+};
+
 // Get support ticket by ID
 const getSupportTicketById = async (req, res) => {
   try {
     const { id } = req.params;
     const pool = getPool();
     
-    const result = await pool.query(`
-      SELECT 
+    // Validate ticket ID
+    const ticketId = parseInt(id, 10);
+    if (isNaN(ticketId) || ticketId <= 0) {
+      return res.status(400).json({ message: 'Invalid ticket ID' });
+    }
+    
+    const result = await pool.query(
+      `SELECT 
         st.*,
         u1.name as created_by_name,
         u2.name as assigned_to_name,
@@ -83,106 +248,19 @@ const getSupportTicketById = async (req, res) => {
       LEFT JOIN warehouses w ON st.warehouse_id = w.id
       LEFT JOIN warehouse_orders wo ON st.related_order_id = wo.id
       LEFT JOIN outbound_shipments os ON st.related_shipment_id = os.id
-      WHERE st.id = $1
-    `, [id]);
-
+      WHERE st.id = $1`,
+      [ticketId]
+    );
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Support ticket not found' });
     }
-
+    
     const ticket = mapToCamel(result.rows[0]);
     res.json({ ticket });
   } catch (error) {
     console.error('Error fetching support ticket:', error);
     res.status(500).json({ message: 'Failed to fetch support ticket' });
-  }
-};
-
-// Create support ticket
-const createSupportTicket = async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      category,
-      priority,
-      assigned_to,
-      warehouse_id,
-      related_order_id,
-      related_shipment_id
-    } = req.body;
-
-    const pool = getPool();
-    
-    // Generate ticket number
-    const ticketNumberResult = await pool.query(`
-      SELECT COUNT(*) as count FROM support_tickets 
-      WHERE created_at >= CURRENT_DATE
-    `);
-    const count = parseInt(ticketNumberResult.rows[0].count) + 1;
-    const ticketNumber = `TKT-${new Date().getFullYear()}-${String(count).padStart(3, '0')}`;
-
-    const result = await pool.query(`
-      INSERT INTO support_tickets (
-        ticket_number, title, description, category, priority,
-        assigned_to, created_by, warehouse_id, related_order_id, related_shipment_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *
-    `, [ticketNumber, title, description, category, priority, assigned_to, req.user.id, warehouse_id, related_order_id, related_shipment_id]);
-
-    const ticket = mapToCamel(result.rows[0]);
-    res.status(201).json({ ticket });
-  } catch (error) {
-    console.error('Error creating support ticket:', error);
-    res.status(500).json({ message: 'Failed to create support ticket' });
-  }
-};
-
-// Update support ticket
-const updateSupportTicket = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      title,
-      description,
-      category,
-      priority,
-      status,
-      assigned_to,
-      warehouse_id,
-      related_order_id,
-      related_shipment_id,
-      resolution_notes
-    } = req.body;
-
-    const pool = getPool();
-    const result = await pool.query(`
-      UPDATE support_tickets SET
-        title = COALESCE($1, title),
-        description = COALESCE($2, description),
-        category = COALESCE($3, category),
-        priority = COALESCE($4, priority),
-        status = COALESCE($5, status),
-        assigned_to = COALESCE($6, assigned_to),
-        warehouse_id = COALESCE($7, warehouse_id),
-        related_order_id = COALESCE($8, related_order_id),
-        related_shipment_id = COALESCE($9, related_shipment_id),
-        resolution_notes = COALESCE($10, resolution_notes),
-        updated_at = CURRENT_TIMESTAMP,
-        resolved_at = CASE WHEN $5 = 'resolved' AND status != 'resolved' THEN CURRENT_TIMESTAMP ELSE resolved_at END
-      WHERE id = $11
-      RETURNING *
-    `, [title, description, category, priority, status, assigned_to, warehouse_id, related_order_id, related_shipment_id, resolution_notes, id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Support ticket not found' });
-    }
-
-    const ticket = mapToCamel(result.rows[0]);
-    res.json({ ticket });
-  } catch (error) {
-    console.error('Error updating support ticket:', error);
-    res.status(500).json({ message: 'Failed to update support ticket' });
   }
 };
 
@@ -192,7 +270,12 @@ const deleteSupportTicket = async (req, res) => {
     const { id } = req.params;
     const pool = getPool();
     
-    const result = await pool.query('DELETE FROM support_tickets WHERE id = $1 RETURNING *', [id]);
+    const ticketId = parseInt(id, 10);
+    if (isNaN(ticketId) || ticketId <= 0) {
+      return res.status(400).json({ message: 'Invalid ticket ID' });
+    }
+
+    const result = await pool.query('DELETE FROM support_tickets WHERE id = $1 RETURNING *', [ticketId]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Support ticket not found' });
@@ -211,6 +294,11 @@ const getTicketResponses = async (req, res) => {
     const { ticketId } = req.params;
     const pool = getPool();
     
+    const ticketIdInt = parseInt(ticketId, 10);
+    if (isNaN(ticketIdInt) || ticketIdInt <= 0) {
+      return res.status(400).json({ message: 'Invalid ticket ID' });
+    }
+
     const result = await pool.query(`
       SELECT 
         str.*,
@@ -219,7 +307,7 @@ const getTicketResponses = async (req, res) => {
       LEFT JOIN users u ON str.user_id = u.id
       WHERE str.ticket_id = $1
       ORDER BY str.created_at ASC
-    `, [ticketId]);
+    `, [ticketIdInt]);
 
     const responses = result.rows.map(mapToCamel);
     res.json({ responses });
@@ -236,12 +324,17 @@ const addTicketResponse = async (req, res) => {
     const { message, is_internal } = req.body;
     const pool = getPool();
     
+    const ticketIdInt = parseInt(ticketId, 10);
+    if (isNaN(ticketIdInt) || ticketIdInt <= 0) {
+      return res.status(400).json({ message: 'Invalid ticket ID' });
+    }
+
     const result = await pool.query(`
       INSERT INTO support_ticket_responses (
         ticket_id, user_id, message, is_internal
       ) VALUES ($1, $2, $3, $4)
       RETURNING *
-    `, [ticketId, req.user.id, message, is_internal]);
+    `, [ticketIdInt, req.user.id, message, is_internal]);
 
     const response = mapToCamel(result.rows[0]);
     res.status(201).json({ response });
@@ -316,6 +409,11 @@ const getSupportTicketTrends = async (req, res) => {
     const { days = 30 } = req.query;
     const pool = getPool();
     
+    const daysInt = parseInt(days, 10);
+    if (isNaN(daysInt) || daysInt <= 0) {
+      return res.status(400).json({ message: 'Invalid days value' });
+    }
+
     const result = await pool.query(`
       SELECT 
         DATE(created_at) as date,
@@ -323,7 +421,7 @@ const getSupportTicketTrends = async (req, res) => {
         COUNT(CASE WHEN status = 'open' THEN 1 END) as open_tickets,
         COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolved_tickets
       FROM support_tickets
-      WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+      WHERE created_at >= CURRENT_DATE - INTERVAL '${daysInt} days'
       GROUP BY DATE(created_at)
       ORDER BY date DESC
     `);
@@ -338,9 +436,9 @@ const getSupportTicketTrends = async (req, res) => {
 
 module.exports = {
   getSupportTickets,
-  getSupportTicketById,
   createSupportTicket,
   updateSupportTicket,
+  getSupportTicketById,
   deleteSupportTicket,
   getTicketResponses,
   addTicketResponse,

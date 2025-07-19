@@ -2,17 +2,18 @@
 const { getPool } = require('../config/db');
 const { mapToCamel } = require('../utils/dbMappers');
 
-const _applyGenericTextFilter = (data, filters) => {
-    if (filters && filters.searchTerm && typeof filters.searchTerm === 'string' && data.length > 0) {
-        const searchTermLower = filters.searchTerm.toLowerCase();
-        return data.filter(item => 
-            Object.values(item).some(val => 
-                String(val).toLowerCase().includes(searchTermLower)
-            )
-        );
-    }
-    return data;
+// Input sanitization function
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return input.replace(/[<>'"]/g, '').trim();
 };
+
+// Valid filter values
+const VALID_CATEGORIES = ['electronics', 'mechanical', 'electrical', 'tools', 'safety', 'packaging'];
+const VALID_LOCATIONS = ['warehouse-a', 'warehouse-b', 'warehouse-c', 'storage-room', 'loading-dock'];
+const VALID_SHORTFALL_RANGES = ['low', 'medium', 'high'];
+const VALID_RISK_LEVELS = ['critical', 'high', 'medium', 'low'];
+const VALID_LEAD_TIME_RANGES = ['short', 'medium', 'long'];
 
 const getReportData = async (reportKey, filters = {}) => {
   const pool = getPool();
@@ -23,17 +24,23 @@ const getReportData = async (reportKey, filters = {}) => {
   switch (reportKey) {
     case 'inv_stock_levels':
       query = 'SELECT sku, name, category, quantity, location, reorder_point, cost_price, is_serialized FROM inventory_items';
-      if (filters.category) {
-        query += ' WHERE lower(category) = lower($1)';
-        queryParams.push(filters.category);
-        if (filters.location) {
-            query += ' AND lower(location) LIKE $2';
-            queryParams.push(`%${filters.location.toLowerCase()}%`);
-        }
-      } else if (filters.location) {
-         query += ' WHERE lower(location) LIKE $1';
-         queryParams.push(`%${filters.location.toLowerCase()}%`);
+      const stockConditions = [];
+      
+      if (filters.category && VALID_CATEGORIES.includes(filters.category.toLowerCase())) {
+        stockConditions.push('lower(category) = lower($1)');
+        queryParams.push(filters.category.toLowerCase());
       }
+      
+      if (filters.location && VALID_LOCATIONS.includes(filters.location.toLowerCase())) {
+        const locationParam = stockConditions.length > 0 ? 2 : 1;
+        stockConditions.push(`lower(location) LIKE $${locationParam}`);
+        queryParams.push(`%${filters.location.toLowerCase()}%`);
+      }
+      
+      if (stockConditions.length > 0) {
+        query += ' WHERE ' + stockConditions.join(' AND ');
+      }
+      
       query += ' ORDER BY name ASC';
       const stockLevelsRes = await pool.query(query, queryParams);
       rawData = mapToCamel(stockLevelsRes.rows).map(item => ({
@@ -49,20 +56,21 @@ const getReportData = async (reportKey, filters = {}) => {
           i.name as item_name, 
           unnest(i.serial_numbers) as serial_number, 
           i.location, 
-          'In Stock' as status, -- Simplified: real status would be complex
+          'In Stock' as status,
           i.entry_date,
           i.id as item_id 
         FROM inventory_items i 
         WHERE i.is_serialized = TRUE AND i.serial_numbers IS NOT NULL AND array_length(i.serial_numbers, 1) > 0
       `;
-      const serialReportConditions = [];
-      if (filters.sku) {
-        serialReportConditions.push(`lower(i.sku) LIKE $${queryParams.length + 1}`);
-        queryParams.push(`%${filters.sku.toLowerCase()}%`);
+      
+      if (filters.sku && typeof filters.sku === 'string') {
+        const sanitizedSku = sanitizeInput(filters.sku);
+        if (sanitizedSku.length > 0) {
+          query += ' AND lower(i.sku) LIKE $1';
+          queryParams.push(`%${sanitizedSku.toLowerCase()}%`);
+        }
       }
-      if (serialReportConditions.length > 0) {
-        query += ' AND ' + serialReportConditions.join(' AND ');
-      }
+      
       query += ' ORDER BY i.name, serial_number ASC';
       const serializedRes = await pool.query(query, queryParams);
       rawData = mapToCamel(serializedRes.rows);
@@ -83,10 +91,15 @@ const getReportData = async (reportKey, filters = {}) => {
         FROM inventory_items
         WHERE is_aged = TRUE
       `;
+      
       if (filters.minDaysInStock && !isNaN(parseInt(filters.minDaysInStock))) {
-        query += ' AND (CURRENT_DATE - COALESCE(entry_date, CURRENT_DATE)) >= $1';
-        queryParams.push(parseInt(filters.minDaysInStock));
+        const minDays = parseInt(filters.minDaysInStock);
+        if (minDays >= 0) {
+          query += ' AND (CURRENT_DATE - COALESCE(entry_date, CURRENT_DATE)) >= $1';
+          queryParams.push(minDays);
+        }
       }
+      
       query += ' ORDER BY days_in_stock DESC';
       const agingRes = await pool.query(query, queryParams);
       rawData = mapToCamel(agingRes.rows);
@@ -108,15 +121,18 @@ const getReportData = async (reportKey, filters = {}) => {
       `;
       
       const belowReorderConditions = [];
-      if (filters.category) {
+      
+      if (filters.category && VALID_CATEGORIES.includes(filters.category.toLowerCase())) {
         belowReorderConditions.push(`lower(category) = lower($${queryParams.length + 1})`);
-        queryParams.push(filters.category);
+        queryParams.push(filters.category.toLowerCase());
       }
-      if (filters.location) {
+      
+      if (filters.location && VALID_LOCATIONS.includes(filters.location.toLowerCase())) {
         belowReorderConditions.push(`lower(location) LIKE $${queryParams.length + 1}`);
         queryParams.push(`%${filters.location.toLowerCase()}%`);
       }
-      if (filters.shortfallRange) {
+      
+      if (filters.shortfallRange && VALID_SHORTFALL_RANGES.includes(filters.shortfallRange)) {
         switch (filters.shortfallRange) {
           case 'low':
             belowReorderConditions.push(`(reorder_point - quantity) BETWEEN 1 AND 10`);
@@ -133,6 +149,7 @@ const getReportData = async (reportKey, filters = {}) => {
       if (belowReorderConditions.length > 0) {
         query += ' AND ' + belowReorderConditions.join(' AND ');
       }
+      
       query += ' ORDER BY shortfall DESC';
       
       const belowReorderRes = await pool.query(query, queryParams);
@@ -161,13 +178,13 @@ const getReportData = async (reportKey, filters = {}) => {
       `;
       
       const stockOutConditions = [];
-      if (filters.category) {
+      
+      if (filters.category && VALID_CATEGORIES.includes(filters.category.toLowerCase())) {
         stockOutConditions.push(`lower(i.category) = lower($${queryParams.length + 1})`);
-        queryParams.push(filters.category);
+        queryParams.push(filters.category.toLowerCase());
       }
-      if (filters.riskLevel) {
-        // This would be calculated in the application logic
-        // For now, we'll filter based on current stock vs reorder point
+      
+      if (filters.riskLevel && VALID_RISK_LEVELS.includes(filters.riskLevel)) {
         switch (filters.riskLevel) {
           case 'critical':
             stockOutConditions.push(`i.quantity < (i.reorder_point * 0.5)`);
@@ -183,7 +200,8 @@ const getReportData = async (reportKey, filters = {}) => {
             break;
         }
       }
-      if (filters.leadTimeRange) {
+      
+      if (filters.leadTimeRange && VALID_LEAD_TIME_RANGES.includes(filters.leadTimeRange)) {
         switch (filters.leadTimeRange) {
           case 'short':
             stockOutConditions.push(`COALESCE(v.average_lead_time, 14) <= 7`);
@@ -200,6 +218,7 @@ const getReportData = async (reportKey, filters = {}) => {
       if (stockOutConditions.length > 0) {
         query += ' AND ' + stockOutConditions.join(' AND ');
       }
+      
       query += ' ORDER BY i.quantity ASC';
       
       const stockOutRiskRes = await pool.query(query, queryParams);
@@ -270,33 +289,33 @@ const getReportData = async (reportKey, filters = {}) => {
       break;
       
     case 'vendor_performance':
-        query = `
-            SELECT 
-                id, name, contact_person, email, performance_score,
-                average_lead_time, total_spend
-            FROM vendors
-            ORDER BY performance_score DESC
-        `;
-        const vendorPerfRes = await pool.query(query);
-        rawData = mapToCamel(vendorPerfRes.rows).map(vendor => ({
-            ...vendor,
-            onTimeDeliveryRate: vendor.performanceScore || 0,
-            qualityRating: parseFloat(((vendor.performanceScore || 0) / 20).toFixed(1)),
-        }));
-        break;
+      query = `
+        SELECT 
+          id, name, contact_person, email, performance_score,
+          average_lead_time, total_spend
+        FROM vendors
+        ORDER BY performance_score DESC
+      `;
+      const vendorPerfRes = await pool.query(query);
+      rawData = mapToCamel(vendorPerfRes.rows).map(vendor => ({
+        ...vendor,
+        onTimeDeliveryRate: vendor.performanceScore || 0,
+        qualityRating: parseFloat(((vendor.performanceScore || 0) / 20).toFixed(1)),
+      }));
+      break;
 
     case 'compliance_document_status':
-        query = `
-            SELECT 
-                cd.name, rs.name as standard_name, cd.status, cd.version, 
-                cd.expiry_date, cd.last_reviewed_date, cd.responsible_person 
-            FROM compliance_documents cd
-            LEFT JOIN regulatory_standards rs ON cd.standard_id = rs.id
-            ORDER BY cd.status, cd.expiry_date ASC NULLS LAST
-        `;
-        const complianceDocsRes = await pool.query(query);
-        rawData = mapToCamel(complianceDocsRes.rows);
-        break;
+      query = `
+        SELECT 
+          cd.name, rs.name as standard_name, cd.status, cd.version, 
+          cd.expiry_date, cd.last_reviewed_date, cd.responsible_person 
+        FROM compliance_documents cd
+        LEFT JOIN regulatory_standards rs ON cd.standard_id = rs.id
+        ORDER BY cd.status, cd.expiry_date ASC NULLS LAST
+      `;
+      const complianceDocsRes = await pool.query(query);
+      rawData = mapToCamel(complianceDocsRes.rows);
+      break;
 
     default:
       console.warn(`Backend report key "${reportKey}" not fully implemented for PostgreSQL. Applying generic filter if possible.`);
@@ -306,4 +325,27 @@ const getReportData = async (reportKey, filters = {}) => {
   return _applyGenericTextFilter(rawData, filters);
 };
 
-module.exports = { getReportData };
+// Generic text filter function with input validation
+const _applyGenericTextFilter = (data, filters) => {
+  if (!filters.searchTerm || typeof filters.searchTerm !== 'string') {
+    return data;
+  }
+  
+  const sanitizedSearch = sanitizeInput(filters.searchTerm.toLowerCase());
+  if (sanitizedSearch.length === 0) {
+    return data;
+  }
+  
+  return data.filter(item => {
+    return Object.values(item).some(value => {
+      if (typeof value === 'string') {
+        return value.toLowerCase().includes(sanitizedSearch);
+      }
+      return false;
+    });
+  });
+};
+
+module.exports = {
+  getReportData
+};

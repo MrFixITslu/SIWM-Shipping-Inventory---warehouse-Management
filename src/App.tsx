@@ -7,7 +7,7 @@ import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { InventoryProvider } from '@/contexts/InventoryContext';
 import { VendorProvider } from '@/contexts/VendorContext';
-import { AssetProvider } from '@/contexts/AssetContext'; // New
+import { AssetProvider } from '@/contexts/AssetContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ALL_NAV_ITEMS } from '@/constants';
@@ -32,13 +32,28 @@ const CustomerSupportPage = React.lazy(() => import('@/pages/CustomerSupportPage
 const HelpPage = React.lazy(() => import('@/pages/HelpPage'));
 const CompliancePage = React.lazy(() => import('@/pages/CompliancePage'));
 
-
 const PageLoadingFallback: React.FC = () => (
   <div className="flex items-center justify-center h-[calc(100vh-10rem)]">
     <div className="text-center">
       <LoadingSpinner className="w-12 h-12 text-primary-500 mx-auto mb-3" />
       <p className="text-lg font-medium text-secondary-600 dark:text-secondary-400">Loading page...</p>
     </div>
+  </div>
+);
+
+// Error fallback component with proper CSS classes instead of inline styles
+const ErrorFallback: React.FC = () => (
+  <div className="text-center mt-8">
+    <div className="text-secondary-700 dark:text-secondary-300 mb-4">
+      Error loading page or module.<br/>
+      This may be due to a missing or outdated chunk file.<br/>
+    </div>
+    <button 
+      onClick={() => window.location.reload()} 
+      className="mt-4 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white border-none rounded cursor-pointer transition-colors"
+    >
+      Reload
+    </button>
   </div>
 );
 
@@ -55,11 +70,12 @@ const useRoutePermissions = () => {
   }, []);
 };
 
-
 const App: React.FC = () => {
   useEffect(() => {
     // Initialize service worker for PWA features
-    initializeServiceWorker().catch(console.error);
+    initializeServiceWorker().catch((error) => {
+      console.error('Failed to initialize service worker:', error);
+    });
   }, []);
 
   return (
@@ -72,7 +88,6 @@ const App: React.FC = () => {
     </ErrorBoundary>
   );
 };
-
 
 const MainApp: React.FC = () => {
   const { isDarkMode } = useDarkMode();
@@ -91,14 +106,7 @@ const MainApp: React.FC = () => {
   
   return (
     <div className={`${isDarkMode ? 'dark' : ''}`}>
-      <ErrorBoundary fallback={
-        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-          <div>Error loading page or module.<br/>This may be due to a missing or outdated chunk file.<br/></div>
-          <button onClick={() => window.location.reload()} style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-            Reload
-          </button>
-        </div>
-      }>
+      <ErrorBoundary fallback={<ErrorFallback />}>
         <Suspense fallback={<PageLoadingFallback />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -140,7 +148,6 @@ const MainApp: React.FC = () => {
     </div>
   );
 };
-
 
 const AppLayout: React.FC = () => {
   const { user } = useAuth();
