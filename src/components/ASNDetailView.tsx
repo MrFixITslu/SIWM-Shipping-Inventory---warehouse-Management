@@ -227,7 +227,12 @@ const ASNDetailView: React.FC<ASNDetailViewProps> = ({ asn, user, onClose, onEnt
                 <h3 className="text-xl font-semibold text-primary-600 dark:text-primary-400">
                     Details for Shipment #{asn.id}
                 </h3>
-                <button onClick={onClose} className="p-1 rounded-full text-secondary-500 hover:bg-secondary-200 dark:hover:bg-secondary-700">
+                <button 
+                    onClick={onClose} 
+                    className="p-1 rounded-full text-secondary-500 hover:bg-secondary-200 dark:hover:bg-secondary-700"
+                    title="Close details"
+                    aria-label="Close shipment details"
+                >
                     <CloseIcon className="h-5 w-5" />
                 </button>
             </div>

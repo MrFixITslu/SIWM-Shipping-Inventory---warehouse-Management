@@ -12,7 +12,7 @@ const HelpPage: React.FC = () => {
   const roleClass = "font-mono font-bold text-purple-600 dark:text-purple-400";
 
   return (
-    <PageContainer title="Vision79 SIWM - User Guide">
+          <PageContainer title="Vision79 Shipping, Inventory & Warehouse Management - User Guide">
       <div className="prose dark:prose-invert max-w-none">
         {/* Feature Overview */}
         <h2 className={sectionTitleClass}>Feature Overview</h2>

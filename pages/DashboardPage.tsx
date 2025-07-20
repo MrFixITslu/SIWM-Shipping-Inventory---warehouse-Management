@@ -1,17 +1,71 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import PageContainer from '@/components/PageContainer';
-import DashboardCard from '@/components/DashboardCard';
-import Modal from '@/components/Modal'; 
-import ErrorMessage from '@/components/ErrorMessage';
-import { DashboardMetric, StockOutRiskForecastItem, AlertSeverity, WorkflowMetric, ItemBelowReorderPoint, ItemAtRiskOfStockOut, RunRateData } from '@/types';
-import { AiIcon, CheckBadgeIcon, WarningIcon } from '@/constants';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { aiInsightService } from '@/services/aiInsightService'; 
-import { dashboardService } from '@/services/dashboardService';
-import { alertingService } from '@/services/alertingService';
-import LoadingSpinner from '@/components/icons/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
+import PageContainer from '../components/PageContainer';
+import DashboardCard from '../components/DashboardCard';
+import DashboardCharts from '../components/DashboardCharts';
+import InteractiveTable from '../components/InteractiveTable';
+import StatsCard from '../components/StatsCard';
+import Modal from '../components/Modal'; 
+import ErrorMessage from '../components/ErrorMessage';
+import { DashboardMetric, StockOutRiskForecastItem, AlertSeverity, WorkflowMetric } from '../types';
+import { AiIcon, CheckBadgeIcon, WarningIcon } from '../constants';
+import { 
+  CubeIcon, 
+  TruckIcon, 
+  UserGroupIcon, 
+  CurrencyDollarIcon,
+  ExclamationTriangleIcon,
+  ClockIcon,
+  ChartBarIcon,
+  CogIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ExclamationCircleIcon,
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon
+} from '@heroicons/react/24/outline';
+import { aiInsightService } from '../services/aiInsightService'; 
+import { dashboardService } from '../services/dashboardService';
+import { alertingService } from '../services/alertingService';
+import { LoadingSpinner } from '../components/icons/LoadingSpinner';
+
+// Type definitions for missing interfaces
+interface ItemBelowReorderPoint {
+  itemId: number;
+  itemName: string;
+  sku: string;
+  currentQuantity: number;
+  reorderPoint: number;
+  shortfall: number;
+  category: string;
+  location: string;
+}
+
+interface ItemAtRiskOfStockOut {
+  itemId: number;
+  itemName: string;
+  sku: string;
+  currentQuantity: number;
+  sixMonthDemand: number;
+  demandRange: {
+    min: number;
+    max: number;
+  };
+  projectedStockOutDate: string;
+  leadTime: number;
+  category: string;
+  location: string;
+  variability: number;
+}
+
+interface RunRateData {
+  weeklyInstalls: number;
+  lastUpdated: string;
+  source: 'dispatch' | 'manual' | 'default';
+}
 
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<DashboardMetric[]>([]);
   const [workflowMetrics, setWorkflowMetrics] = useState<WorkflowMetric[]>([]);
   const [shipmentData, setShipmentData] = useState<any[]>([]);
@@ -28,7 +82,7 @@ export const DashboardPage: React.FC = () => {
   const [itemsBelowReorderPoint, setItemsBelowReorderPoint] = useState<ItemBelowReorderPoint[]>([]);
   const [itemsAtRiskOfStockOut, setItemsAtRiskOfStockOut] = useState<ItemAtRiskOfStockOut[]>([]);
   const [runRate, setRunRate] = useState<RunRateData>({
-    weeklyInstalls: 66, // Default: 11 installs/day × 6 days/week
+    weeklyInstalls: 66,
     lastUpdated: new Date().toISOString(),
     source: 'default'
   });
@@ -152,6 +206,12 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  // Define navigation handlers for dashboard cards
+  const handleInventoryClick = () => navigate('/inventory');
+  const handleShipmentsClick = () => navigate('/shipments');
+  const handleUsersClick = () => navigate('/users');
+  const handleFinanceClick = () => navigate('/finance');
+
   const renderDashboardContent = () => {
     if (isDashboardLoading) {
       return (
@@ -168,46 +228,85 @@ export const DashboardPage: React.FC = () => {
 
     return (
       <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-          {metrics.slice(0, 4).map((metric) => (
-            <DashboardCard key={metric.title} metric={metric} />
-          ))}
+        {/* Enhanced Dashboard Cards with Navigation */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {metrics.slice(0, 4).map((metric, index) => {
+            const navigationHandlers = [
+              handleInventoryClick,
+              handleShipmentsClick,
+              handleUsersClick,
+              handleFinanceClick
+            ];
+            
+            return (
+              <DashboardCard 
+                key={metric.title} 
+                metric={metric} 
+                onClick={navigationHandlers[index]}
+              />
+            );
+          })}
+        </div>
+
+        {/* Additional Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatsCard
+            title="Stock Alerts"
+            value={itemsBelowReorderPoint.length + itemsAtRiskOfStockOut.length}
+            subtitle="Items requiring attention"
+            icon={ExclamationTriangleIcon}
+            color="red"
+            onClick={() => navigate('/inventory')}
+            trend={{
+              value: 12,
+              isPositive: false,
+              label: "vs last week"
+            }}
+          />
+          <StatsCard
+            title="Weekly Installs"
+            value={runRate.weeklyInstalls}
+            subtitle="Average per week"
+            icon={ArrowTrendingUpIcon}
+            color="green"
+            onClick={() => setShowRunRateModal(true)}
+            trend={{
+              value: 8,
+              isPositive: true,
+              label: "vs last week"
+            }}
+          />
+          <StatsCard
+            title="AI Predictions"
+            value={stockForecasts.length}
+            subtitle="Active forecasts"
+            icon={AiIcon}
+            color="purple"
+            onClick={() => navigate('/ai-insights')}
+          />
+          <StatsCard
+            title="System Health"
+            value="98%"
+            subtitle="All systems operational"
+            icon={CheckCircleIcon}
+            color="blue"
+            onClick={() => navigate('/system')}
+            trend={{
+              value: 2,
+              isPositive: true,
+              label: "vs last week"
+            }}
+          />
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg lg:col-span-2">
-            <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 mb-4">Shipment Trends (Last 6 Months)</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={shipmentData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-secondary-200 dark:stroke-secondary-700" />
-                <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary-color)' }} />
-                <YAxis tick={{ fill: 'var(--text-secondary-color)' }} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--tooltip-bg-color)', borderColor: 'var(--tooltip-border-color)', borderRadius: '0.5rem'}} labelStyle={{ color: 'var(--tooltip-label-color)', fontWeight: 'bold' }} itemStyle={{ color: 'var(--tooltip-item-color)' }} />
-                <Legend wrapperStyle={{ color: 'var(--text-secondary-color)'}} />
-                <Bar dataKey="incoming" fill="var(--primary-color)" name="Incoming Shipments" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="outgoing" fill="var(--secondary-chart-color)" name="Outgoing Shipments" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg">
-              <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 mb-4">Workflow Performance</h3>
-              <div className="space-y-4">
-                {workflowMetrics.map((metric) => {
-                  const Icon = metric.icon;
-                  return (
-                    <div key={metric.title} className="flex items-start">
-                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-primary-100 dark:bg-primary-900/50 text-primary-500 dark:text-primary-400">
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <div className="ml-4">
-                        <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400">{metric.title}</p>
-                        <p className="text-lg font-bold text-secondary-800 dark:text-secondary-200">{metric.value}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-          </div>
+        {/* Interactive Charts Section */}
+        <div className="mb-8">
+          <DashboardCharts
+            shipmentData={shipmentData}
+            workflowMetrics={workflowMetrics}
+            itemsBelowReorderPoint={itemsBelowReorderPoint}
+            itemsAtRiskOfStockOut={itemsAtRiskOfStockOut}
+          />
         </div>
       </>
     );
@@ -227,13 +326,82 @@ export const DashboardPage: React.FC = () => {
       return <ErrorMessage message={stockAnalysisError} />;
     }
 
+    // Define table columns for items below reorder point
+    const belowReorderColumns = [
+      {
+        key: 'itemName',
+        header: 'Item',
+        render: (item: ItemBelowReorderPoint) => (
+          <div>
+            <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">{item.itemName}</div>
+            <div className="text-sm text-secondary-500 dark:text-secondary-400">{item.sku}</div>
+          </div>
+        ),
+      },
+      { key: 'currentQuantity', header: 'Current Qty' },
+      { key: 'reorderPoint', header: 'Reorder Point' },
+      {
+        key: 'shortfall',
+        header: 'Shortfall',
+        render: (item: ItemBelowReorderPoint) => (
+          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+            -{item.shortfall}
+          </span>
+        ),
+      },
+      { key: 'location', header: 'Location' },
+    ];
+
+    // Define table columns for items at risk of stock-out
+    const atRiskColumns = [
+      {
+        key: 'itemName',
+        header: 'Item',
+        render: (item: ItemAtRiskOfStockOut) => (
+          <div>
+            <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">{item.itemName}</div>
+            <div className="text-sm text-secondary-500 dark:text-secondary-400">{item.sku}</div>
+          </div>
+        ),
+      },
+      { key: 'currentQuantity', header: 'Current Qty' },
+      {
+        key: 'sixMonthDemand',
+        header: '6-Month Demand (Range)',
+        render: (item: ItemAtRiskOfStockOut) => (
+          <div>
+            <div className="text-sm text-secondary-900 dark:text-secondary-100">
+              {item.sixMonthDemand.toLocaleString()}
+            </div>
+            <div className="text-xs text-secondary-500 dark:text-secondary-400">
+              ({item.demandRange.min.toLocaleString()}–{item.demandRange.max.toLocaleString()})
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'projectedStockOutDate',
+        header: 'Projected Stock-Out',
+        render: (item: ItemAtRiskOfStockOut) => (
+          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+            {item.projectedStockOutDate}
+          </span>
+        ),
+      },
+      {
+        key: 'leadTime',
+        header: 'Lead Time',
+        render: (item: ItemAtRiskOfStockOut) => `${item.leadTime} days`,
+      },
+    ];
+
     return (
       <div className="space-y-6">
-        {/* Run Rate Section */}
-        <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg">
+        {/* Run Rate Configuration Card */}
+        <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 flex items-center">
-              <WarningIcon className="h-6 w-6 mr-2 text-orange-500" />
+              <CogIcon className="h-6 w-6 mr-2 text-orange-500" />
               Run Rate Configuration
             </h3>
             <button
@@ -241,134 +409,50 @@ export const DashboardPage: React.FC = () => {
                 setNewRunRate(runRate.weeklyInstalls);
                 setShowRunRateModal(true);
               }}
-              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md shadow-sm transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md shadow-sm transition-all duration-200 hover:shadow-lg"
             >
               Update Run Rate
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 dark:bg-secondary-700 p-4 rounded-lg">
-              <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Weekly Installs</p>
-              <p className="text-2xl font-bold text-secondary-800 dark:text-secondary-200">{runRate.weeklyInstalls}</p>
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Weekly Installs</p>
+              <p className="text-2xl font-bold text-blue-800 dark:text-blue-200">{runRate.weeklyInstalls}</p>
             </div>
-            <div className="bg-gray-50 dark:bg-secondary-700 p-4 rounded-lg">
-              <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Source</p>
-              <p className="text-lg font-semibold text-secondary-800 dark:text-secondary-200 capitalize">{runRate.source}</p>
+            <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Source</p>
+              <p className="text-lg font-semibold text-green-800 dark:text-green-200 capitalize">{runRate.source}</p>
             </div>
-            <div className="bg-gray-50 dark:bg-secondary-700 p-4 rounded-lg">
-              <p className="text-sm font-medium text-secondary-600 dark:text-secondary-400">Last Updated</p>
-              <p className="text-sm text-secondary-800 dark:text-secondary-200">
+            <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
+              <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Last Updated</p>
+              <p className="text-sm text-purple-800 dark:text-purple-200">
                 {new Date(runRate.lastUpdated).toLocaleDateString()}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Items Below Reorder Point */}
-        <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg">
-          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 mb-4 flex items-center">
-            <WarningIcon className="h-6 w-6 mr-2 text-red-500" />
-            Items Below Reorder Point ({itemsBelowReorderPoint.length})
-          </h3>
-          {itemsBelowReorderPoint.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
-                <thead className="bg-secondary-50 dark:bg-secondary-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Item</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Current Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Reorder Point</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Shortfall</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Location</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
-                  {itemsBelowReorderPoint.map((item) => (
-                    <tr key={item.itemId} className="hover:bg-secondary-50 dark:hover:bg-secondary-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">{item.itemName}</div>
-                          <div className="text-sm text-secondary-500 dark:text-secondary-400">{item.sku}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-100">
-                        {item.currentQuantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-100">
-                        {item.reorderPoint}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                          -{item.shortfall}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-500 dark:text-secondary-400">
-                        {item.location}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-secondary-600 dark:text-secondary-400 text-center py-4">No items are currently below their reorder point.</p>
-          )}
-        </div>
+        {/* Interactive Tables */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <InteractiveTable
+            data={itemsBelowReorderPoint}
+            columns={belowReorderColumns}
+            title="Items Below Reorder Point"
+            icon={ExclamationTriangleIcon}
+            emptyMessage="No items are currently below their reorder point."
+            onRowClick={() => navigate('/inventory')}
+            maxRows={5}
+          />
 
-        {/* Items at Risk of Stock-Out */}
-        <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg">
-          <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 mb-4 flex items-center">
-            <WarningIcon className="h-6 w-6 mr-2 text-yellow-500" />
-            Items at Risk of Stock-Out (6 Months) ({itemsAtRiskOfStockOut.length})
-          </h3>
-          {itemsAtRiskOfStockOut.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-secondary-200 dark:divide-secondary-700">
-                <thead className="bg-secondary-50 dark:bg-secondary-700">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Item</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Current Qty</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">6-Month Demand (Range)</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Projected Stock-Out</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-secondary-500 dark:text-secondary-400 uppercase tracking-wider">Lead Time</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-secondary-800 divide-y divide-secondary-200 dark:divide-secondary-700">
-                  {itemsAtRiskOfStockOut.map((item) => (
-                    <tr key={item.itemId} className="hover:bg-secondary-50 dark:hover:bg-secondary-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">{item.itemName}</div>
-                          <div className="text-sm text-secondary-500 dark:text-secondary-400">{item.sku}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-900 dark:text-secondary-100">
-                        {item.currentQuantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-secondary-900 dark:text-secondary-100">
-                          {item.sixMonthDemand.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-secondary-500 dark:text-secondary-400">
-                          ({item.demandRange.min.toLocaleString()}–{item.demandRange.max.toLocaleString()})
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                          {item.projectedStockOutDate}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-secondary-500 dark:text-secondary-400">
-                        {item.leadTime} days
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-secondary-600 dark:text-secondary-400 text-center py-4">No items are at risk of stock-out within the next 6 months.</p>
-          )}
+          <InteractiveTable
+            data={itemsAtRiskOfStockOut}
+            columns={atRiskColumns}
+            title="Items at Risk of Stock-Out (6 Months)"
+            icon={ClockIcon}
+            emptyMessage="No items are at risk of stock-out within the next 6 months."
+            onRowClick={() => navigate('/inventory')}
+            maxRows={5}
+          />
         </div>
       </div>
     );
@@ -389,29 +473,44 @@ export const DashboardPage: React.FC = () => {
     }
 
     return (
-        <>
-            <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
+        <div className="space-y-4">
+            <p className="text-sm text-secondary-600 dark:text-secondary-400">
                 VisionBot analysis of current warehouse operations:
             </p>
-            <ul className="space-y-3 text-secondary-700 dark:text-secondary-300">
+            <div className="space-y-3">
                 {stockForecasts.length > 0 ? stockForecasts.map(forecast => (
-                    <li key={forecast.sku} className="flex flex-col sm:flex-row justify-between items-start gap-2">
-                    <div>
-                        <span className="font-semibold text-yellow-500">Forecasting:</span> Potential stock-out for '{forecast.itemName} (SKU: {forecast.sku})' in ~{forecast.predictedStockOutDays} days (Confidence: {(forecast.confidence * 100).toFixed(0)}%). Current: {forecast.currentStock}.
-                        Recommended reorder: {forecast.recommendedReorderQty} units.
+                    <div key={forecast.sku} className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-700 hover:shadow-md transition-all duration-200">
+                        <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                            <div className="flex-1">
+                                <div className="flex items-center mb-2">
+                                    <span className="font-semibold text-yellow-600 dark:text-yellow-400 mr-2">Forecasting:</span>
+                                    <span className="text-sm text-secondary-600 dark:text-secondary-400">
+                                        Potential stock-out for '{forecast.itemName} (SKU: {forecast.sku})' in ~{forecast.predictedStockOutDays} days
+                                    </span>
+                                </div>
+                                <div className="text-sm text-secondary-500 dark:text-secondary-400">
+                                    Confidence: {(forecast.confidence * 100).toFixed(0)}% | Current: {forecast.currentStock} | 
+                                    Recommended reorder: {forecast.recommendedReorderQty} units
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => handleInitiateDashboardReorder(forecast.itemName, forecast.sku, forecast.recommendedReorderQty)}
+                                className="flex-shrink-0 items-center text-xs bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-3 py-1.5 rounded-md shadow hover:shadow-md transition-all duration-200"
+                            >
+                                <CheckBadgeIcon className="h-4 w-4 mr-1.5 inline-block" /> Initiate Reorder
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => handleInitiateDashboardReorder(forecast.itemName, forecast.sku, forecast.recommendedReorderQty)}
-                        className="flex-shrink-0 items-center text-xs bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-3 py-1.5 rounded-md shadow hover:shadow-md transition-all duration-200 self-start sm:self-center"
-                    >
-                        <CheckBadgeIcon className="h-4 w-4 mr-1.5 inline-block" /> Initiate Reorder
-                    </button>
-                    </li>
                 )) : (
-                    <li><div><span className="font-semibold text-green-500">Forecasting:</span> No critical stock-out risks detected by AI at this moment.</div></li>
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                        <div className="flex items-center">
+                            <span className="font-semibold text-green-600 dark:text-green-400 mr-2">Forecasting:</span>
+                            <span className="text-secondary-600 dark:text-secondary-400">No critical stock-out risks detected by AI at this moment.</span>
+                        </div>
+                    </div>
                 )}
-            </ul>
-        </>
+            </div>
+        </div>
     );
   };
 
@@ -422,7 +521,7 @@ export const DashboardPage: React.FC = () => {
       {/* Enhanced Stock Analysis Section */}
       <div className="bg-white dark:bg-secondary-800 p-6 rounded-xl shadow-lg mb-8">
         <h3 className="text-xl font-semibold text-secondary-800 dark:text-secondary-200 mb-4 flex items-center">
-          <WarningIcon className="h-6 w-6 mr-2 text-orange-500" />
+          <ChartBarIcon className="h-6 w-6 mr-2 text-orange-500" />
           Stock Analysis & Risk Assessment
         </h3>
         {renderStockAnalysis()}

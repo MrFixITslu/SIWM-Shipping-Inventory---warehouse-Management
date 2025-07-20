@@ -7,11 +7,12 @@ import ConfirmationModal from '@/components/ConfirmationModal';
 import ErrorMessage from '@/components/ErrorMessage';
 import SerialManagementModal from '@/components/SerialManagementModal';
 import AutocompleteInput from '@/components/AutocompleteInput';
+import ExcelUploadModal from '@/components/ExcelUploadModal';
 import useConfirmationModal from '@/hooks/useConfirmationModal';
 import { useInventory } from '@/hooks/useInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { InventoryItem, ColumnDefinition } from '@/types';
-import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, SerialIcon, ArrowLeftOnRectangleIcon, ShipmentIcon } from '@/constants';
+import { PlusIcon, EditIcon, DeleteIcon, SearchIcon, SerialIcon, ArrowLeftOnRectangleIcon, ShipmentIcon, UploadIcon } from '@/constants';
 import { inventoryService } from '@/services/inventoryService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
 import { debounce } from '@/utils/performance';
@@ -60,6 +61,7 @@ const InventoryManagementPage: React.FC = () => {
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [addedItemsForAsn, setAddedItemsForAsn] = useState<Array<{name: string, sku: string, quantity: number, serialNumbers?: string[]}>>([]);
+  const [isExcelUploadModalOpen, setIsExcelUploadModalOpen] = useState(false);
 
   // Add filter state
   const [agedFilter, setAgedFilter] = useState<'all' | 'aged' | 'non-aged'>('all');
@@ -423,6 +425,46 @@ const InventoryManagementPage: React.FC = () => {
     setShowSerialNotification(false);
   };
 
+  const handleExcelUploadComplete = async (items: any[]) => {
+    try {
+      setIsSaving(true);
+      setError(null);
+      
+      // Convert processed items to inventory format and save them
+      for (const item of items) {
+        const inventoryItem = {
+          name: item.itemName,
+          sku: item.sku,
+          category: item.category || 'General', // Use category from Excel or default
+          quantity: item.quantity,
+          location: item.location || 'Warehouse A', // Use location from Excel or default
+          reorderPoint: item.reorderPoint || Math.max(Math.floor(item.quantity * 0.2), 5), // Use reorder point from Excel or default
+          isSerialized: false,
+          costPrice: item.costPrice || 0, // Use cost price from Excel or default
+          entryDate: new Date().toISOString(),
+          department: item.department
+        };
+        
+        await inventoryService.addInventoryItem(inventoryItem);
+      }
+      
+      // Show success message
+      setSuccessMessage(`Successfully uploaded ${items.length} items from Excel file!`);
+      setShowSuccessNotification(true);
+      
+      // Auto-hide success notification after 3 seconds
+      setTimeout(() => {
+        setShowSuccessNotification(false);
+        setSuccessMessage('');
+      }, 3000);
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to upload items from Excel file');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleSaveSerials = async (itemId: number, serials: string[]) => {
     try {
       if (itemId === -1) {
@@ -520,6 +562,13 @@ const InventoryManagementPage: React.FC = () => {
       title="Inventory Management"
       actions={
         <div className="flex space-x-2">
+          <button
+            onClick={() => setIsExcelUploadModalOpen(true)}
+            className="flex items-center bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md"
+          >
+            <UploadIcon className="h-5 w-5 mr-2" />
+            Upload Excel
+          </button>
           <button
             onClick={() => handleOpenItemModal()}
             className="flex items-center bg-primary-500 hover:bg-primary-600 text-white font-semibold px-4 py-2 rounded-lg shadow-md"
@@ -839,6 +888,13 @@ const InventoryManagementPage: React.FC = () => {
         title="Confirm Delete"
         message="Are you sure you want to delete this item? This action cannot be undone."
         confirmButtonText={confirmButtonText}
+      />
+
+      {/* Excel Upload Modal */}
+      <ExcelUploadModal
+        isOpen={isExcelUploadModalOpen}
+        onClose={() => setIsExcelUploadModalOpen(false)}
+        onUploadComplete={handleExcelUploadComplete}
       />
     </PageContainer>
   );

@@ -134,7 +134,7 @@ const createASN = async (asnData) => { // Expects camelCase
         const htmlBody = `
             <div style="font-family: sans-serif; padding: 20px; color: #333;">
                 <h2>New Incoming Shipment Received</h2>
-                <p>A new shipment has been logged in the Vision79 SIWM system.</p>
+                <p>A new shipment has been logged in the Vision79 Shipping, Inventory & Warehouse Management system.</p>
                 <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
                     <tr style="border-bottom: 1px solid #ddd;">
                         <th style="text-align: left; padding: 8px;">P.O. Number:</th>
@@ -162,7 +162,7 @@ const createASN = async (asnData) => { // Expects camelCase
                         View Shipments
                     </a>
                 </p>
-                <p style="font-size: 12px; color: #777;">This is an automated notification from the Vision79 SIWM system.</p>
+                <p style="font-size: 12px; color: #777;">This is an automated notification from the Vision79 Shipping, Inventory & Warehouse Management system.</p>
             </div>
         `;
         

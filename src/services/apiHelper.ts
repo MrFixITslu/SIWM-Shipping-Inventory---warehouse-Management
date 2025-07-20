@@ -7,9 +7,24 @@ async function handleResponse(response: Response) {
     return response.json();
   }
   
+  // Handle rate limiting (429) specifically
+  if (response.status === 429) {
+    const errorData = await response.json().catch(() => ({ 
+      message: 'Rate limit exceeded. Please wait before making more requests.',
+      retryAfter: 60
+    }));
+    
+    const error = new Error(errorData.message || 'Rate limit exceeded');
+    (error as any).status = 429;
+    (error as any).retryAfter = errorData.retryAfter;
+    (error as any).isRateLimit = true;
+    throw error;
+  }
+  
   const errorData = await response.json().catch(() => ({ 
     message: `Request failed with status ${response.status}: ${response.statusText}` 
   }));
+  
   // Detect forced re-login error
   if (errorData.message && errorData.message.includes('Session expired due to role or permission change')) {
     const err = new Error(errorData.message);
@@ -18,7 +33,12 @@ async function handleResponse(response: Response) {
     window.dispatchEvent(new CustomEvent('forceLogout', { detail: { forceLogout: true, message: errorData.message } }));
     throw err;
   }
-  throw new Error(errorData.message || 'An unknown API error occurred');
+  
+  // Preserve the original error message and status
+  const error = new Error(errorData.message || `Request failed with status ${response.status}`);
+  (error as any).status = response.status;
+  (error as any).statusText = response.statusText;
+  throw error;
 }
 
 export const api = {

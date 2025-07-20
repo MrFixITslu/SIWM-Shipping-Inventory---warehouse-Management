@@ -1,7 +1,67 @@
 // backend/services/geminiServiceBackend.js
 const { GoogleGenAI } = require('@google/genai');
+const AI_CONFIG = require('../config/aiConfig');
 
-const GEMINI_CHAT_MODEL_BACKEND = "gemini-1.5-pro-latest"; // Centralized model choice
+const GEMINI_CHAT_MODEL_BACKEND = AI_CONFIG.gemini.model;
+
+// Rate limiting configuration
+const RATE_LIMIT_CONFIG = {
+    maxRequestsPerMinute: AI_CONFIG.rateLimits.requestsPerMinute,
+    maxRequestsPerDay: AI_CONFIG.rateLimits.requestsPerDay,
+    retryDelayMs: AI_CONFIG.rateLimits.retryDelayMs,
+    maxRetries: AI_CONFIG.rateLimits.maxRetries
+};
+
+// Simple in-memory rate limiter (in production, use Redis)
+const rateLimiter = {
+    requests: [],
+    lastReset: Date.now(),
+    
+    canMakeRequest() {
+        const now = Date.now();
+        
+        // Reset counters if it's a new day
+        if (now - this.lastReset > 24 * 60 * 60 * 1000) {
+            this.requests = [];
+            this.lastReset = now;
+        }
+        
+        // Remove requests older than 1 minute
+        this.requests = this.requests.filter(time => now - time < 60 * 1000);
+        
+        return this.requests.length < RATE_LIMIT_CONFIG.maxRequestsPerMinute;
+    },
+    
+    recordRequest() {
+        this.requests.push(Date.now());
+    },
+    
+    getWaitTime() {
+        if (this.requests.length === 0) return 0;
+        const oldestRequest = Math.min(...this.requests);
+        const timeSinceOldest = Date.now() - oldestRequest;
+        return Math.max(0, 60000 - timeSinceOldest);
+    }
+};
+
+// Error handling utilities
+const isQuotaExceededError = (error) => {
+    return error.message && (
+        error.message.includes('quota') ||
+        error.message.includes('RESOURCE_EXHAUSTED') ||
+        error.message.includes('429') ||
+        error.message.includes('rate limit')
+    );
+};
+
+const isRetryableError = (error) => {
+    return isQuotaExceededError(error) || 
+           error.message.includes('500') ||
+           error.message.includes('503') ||
+           error.message.includes('timeout');
+};
+
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const SYSTEM_INSTRUCTION_CHAT = `You are VisionBot, an AI assistant for Vision79 Shipment Inventory & Warehouse Manager. 
 Your goal is to help users understand and navigate the application, provide information about logistics and warehouse management concepts, and offer suggestions based on simulated data if applicable. 
@@ -53,46 +113,112 @@ const getChatStream = async (userMessage, history) => {
     return chat.sendMessageStream({ message: userMessage });
 };
 
-const generateText = async (prompt) => {
+const generateText = async (prompt, retryCount = 0) => {
     if (!ai) {
         throw new Error("AI service not available (backend configuration issue).");
     }
-    const response = await ai.models.generateContent({
-        model: GEMINI_CHAT_MODEL_BACKEND, // Or a more specific model for text generation if needed
-        contents: prompt,
-    });
-    return response.text;
+    
+    // Check rate limits
+    if (!rateLimiter.canMakeRequest()) {
+        const waitTime = rateLimiter.getWaitTime();
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+    }
+    
+    try {
+        rateLimiter.recordRequest();
+        const response = await ai.models.generateContent({
+            model: GEMINI_CHAT_MODEL_BACKEND,
+            contents: prompt,
+        });
+        return response.text;
+    } catch (error) {
+        console.error(`[GeminiService] generateText error (attempt ${retryCount + 1}):`, error.message);
+        
+        if (isQuotaExceededError(error)) {
+            const retryDelay = RATE_LIMIT_CONFIG.retryDelayMs * Math.pow(AI_CONFIG.rateLimits.backoffMultiplier, retryCount);
+            console.log(`[GeminiService] Quota exceeded, retrying in ${retryDelay}ms...`);
+            
+            if (retryCount < RATE_LIMIT_CONFIG.maxRetries) {
+                await sleep(retryDelay);
+                return generateText(prompt, retryCount + 1);
+            } else {
+                throw new Error(AI_CONFIG.messages.quotaExceeded);
+            }
+        }
+        
+        if (isRetryableError(error) && retryCount < RATE_LIMIT_CONFIG.maxRetries) {
+            const retryDelay = RATE_LIMIT_CONFIG.retryDelayMs * Math.pow(AI_CONFIG.rateLimits.backoffMultiplier, retryCount);
+            console.log(`[GeminiService] Retryable error, retrying in ${retryDelay}ms...`);
+            await sleep(retryDelay);
+            return generateText(prompt, retryCount + 1);
+        }
+        
+        throw error;
+    }
 };
 
-const generateJson = async (prompt) => {
+const generateJson = async (prompt, retryCount = 0) => {
     if (!ai) {
         throw new Error("AI service not available (backend configuration issue).");
     }
-    const response = await ai.models.generateContent({
-        model: GEMINI_CHAT_MODEL_BACKEND, // Or a model fine-tuned for JSON
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-    });
     
-    // Log the raw AI response for debugging
-    console.log("[GeminiService] Raw AI response:", response.text);
+    // Check rate limits
+    if (!rateLimiter.canMakeRequest()) {
+        const waitTime = rateLimiter.getWaitTime();
+        throw new Error(`Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds before trying again.`);
+    }
     
-    // Parse and clean JSON as per guidelines
-    let jsonStr = response.text.trim();
-    // Fallback: Remove code block wrappers if present
-    if (jsonStr.startsWith('```')) {
-      jsonStr = jsonStr.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/```$/, '').trim();
-    }
-    const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-    const match = jsonStr.match(fenceRegex);
-    if (match && match[2]) {
-      jsonStr = match[2].trim();
-    }
     try {
-      return JSON.parse(jsonStr);
-    } catch (e) {
-      console.error("Backend failed to parse JSON response from Gemini:", jsonStr, e);
-      throw new Error("AI returned an invalid JSON format from backend.");
+        rateLimiter.recordRequest();
+        const response = await ai.models.generateContent({
+            model: GEMINI_CHAT_MODEL_BACKEND,
+            contents: prompt,
+            config: { responseMimeType: "application/json" }
+        });
+        
+        // Log the raw AI response for debugging
+        console.log("[GeminiService] Raw AI response:", response.text);
+        
+        // Parse and clean JSON as per guidelines
+        let jsonStr = response.text.trim();
+        // Fallback: Remove code block wrappers if present
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.replace(/^```[a-zA-Z0-9]*\s*/, '').replace(/```$/, '').trim();
+        }
+        const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+        const match = jsonStr.match(fenceRegex);
+        if (match && match[2]) {
+          jsonStr = match[2].trim();
+        }
+        try {
+          return JSON.parse(jsonStr);
+        } catch (e) {
+          console.error("Backend failed to parse JSON response from Gemini:", jsonStr, e);
+          throw new Error("AI returned an invalid JSON format from backend.");
+        }
+    } catch (error) {
+        console.error(`[GeminiService] generateJson error (attempt ${retryCount + 1}):`, error.message);
+        
+        if (isQuotaExceededError(error)) {
+            const retryDelay = RATE_LIMIT_CONFIG.retryDelayMs * Math.pow(AI_CONFIG.rateLimits.backoffMultiplier, retryCount);
+            console.log(`[GeminiService] Quota exceeded, retrying in ${retryDelay}ms...`);
+            
+            if (retryCount < RATE_LIMIT_CONFIG.maxRetries) {
+                await sleep(retryDelay);
+                return generateJson(prompt, retryCount + 1);
+            } else {
+                throw new Error(AI_CONFIG.messages.quotaExceeded);
+            }
+        }
+        
+        if (isRetryableError(error) && retryCount < RATE_LIMIT_CONFIG.maxRetries) {
+            const retryDelay = RATE_LIMIT_CONFIG.retryDelayMs * Math.pow(AI_CONFIG.rateLimits.backoffMultiplier, retryCount);
+            console.log(`[GeminiService] Retryable error, retrying in ${retryDelay}ms...`);
+            await sleep(retryDelay);
+            return generateJson(prompt, retryCount + 1);
+        }
+        
+        throw error;
     }
 };
 
@@ -289,4 +415,6 @@ module.exports = {
     analyzeSupplierPerformance,
     optimizeWarehouseLayout,
     generateProcurementInsights,
+    isQuotaExceededError,
+    isRetryableError,
 };

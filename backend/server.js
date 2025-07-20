@@ -60,6 +60,7 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const aiFeedbackRoutes = require('./routes/aiFeedbackRoutes');
 const geminiRoutes = require('./routes/geminiRoutes'); // For chatbot
 const aiInsightRoutes = require('./routes/aiInsightRoutes'); // For specific insights
+const scheduledAiRoutes = require('./routes/scheduledAiRoutes'); // For weekly scheduled insights
 const dashboardRoutes = require('./routes/dashboardRoutes'); // Import Dashboard routes
 const systemRoutes = require('./routes/systemRoutes');
 const eventRoutes = require('./routes/eventRoutes');
@@ -70,6 +71,10 @@ const supportRoutes = require('./routes/supportRoutes'); // For customer support
 const startApp = async () => {
     // 1. Connect to Database first
     await connectDB();
+
+    // 2. Initialize Scheduled AI Service
+    const scheduledAiService = require('./services/scheduledAiService');
+    scheduledAiService.init();
 
     // 2. Initialize Express App after DB is ready
     const app = express();
@@ -219,7 +224,7 @@ const startApp = async () => {
     });
     
     app.use(API_PREFIX, generalLimiter);
-    app.get(API_PREFIX, (req, res) => res.json({ message: 'Welcome to Vision79 SIWM Backend API! V1' }));
+    app.get(API_PREFIX, (req, res) => res.json({ message: 'Welcome to Vision79 Shipping, Inventory & Warehouse Management Backend API! V1' }));
     
     app.use(`${API_PREFIX}/auth`, authLimiter, authRoutes);
     app.use(`${API_PREFIX}/users`, userRoutes);
@@ -234,6 +239,7 @@ const startApp = async () => {
     app.use(`${API_PREFIX}/ai-feedback`, aiFeedbackRoutes);
     app.use(`${API_PREFIX}/gemini`, geminiRoutes);
     app.use(`${API_PREFIX}/ai-insights`, aiInsightRoutes);
+    app.use(`${API_PREFIX}/scheduled-ai`, scheduledAiRoutes);
     app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
     app.use(`${API_PREFIX}/system`, systemRoutes);
     app.use(`${API_PREFIX}/events`, eventRoutes);

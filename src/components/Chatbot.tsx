@@ -28,7 +28,7 @@ const Chatbot: React.FC = () => {
          setMessages([
           { 
             id: Date.now().toString(), 
-            text: "Hello! I'm VisionBot, your AI assistant for Vision79 SIWM. How can I help you today?", 
+            text: "Hello! I'm VisionBot, your AI assistant for Vision79 Shipping, Inventory & Warehouse Management. How can I help you today?", 
             sender: 'ai', 
             timestamp: Date.now() 
           }
@@ -156,7 +156,7 @@ const Chatbot: React.FC = () => {
         setMessages([
           { 
             id: Date.now().toString(), 
-            text: "Hello! I'm VisionBot, your AI assistant for Vision79 SIWM. How can I help you today?", 
+            text: "Hello! I'm VisionBot, your AI assistant for Vision79 Shipping, Inventory & Warehouse Management. How can I help you today?", 
             sender: 'ai', 
             timestamp: Date.now() 
           }

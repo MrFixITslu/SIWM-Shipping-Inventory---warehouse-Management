@@ -58,7 +58,7 @@ const sendEmail = async ({ to, subject, html }) => {
 
     try {
         const mailOptions = {
-            from: `"${process.env.EMAIL_FROM_NAME || 'Vision79 SIWM'}" <${process.env.EMAIL_USER}>`,
+            from: `"${process.env.EMAIL_FROM_NAME || 'Vision79 Shipping, Inventory & Warehouse Management'}" <${process.env.EMAIL_USER}>`,
             to,
             subject,
             html,

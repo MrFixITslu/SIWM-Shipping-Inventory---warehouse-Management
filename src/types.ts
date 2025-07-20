@@ -51,6 +51,9 @@ export interface ASN {
   createdAt?: string;
   completedAt?: string;
   items?: ASNItem[];
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
 }
 
 export interface InventoryItem {
@@ -71,6 +74,14 @@ export interface InventoryItem {
   entryDate?: string; // For aging report
   lastMovementDate?: string; // For aging report
   isAged?: boolean; // New: Indicates if this item was in the warehouse before the app was available
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
+  zone_code?: string;
+  aisle_code?: string;
+  shelf_code?: string;
+  safety_stock?: number;
+  primary_vendor_id?: number;
 }
 
 export enum OrderStatus {
@@ -101,6 +112,9 @@ export interface WarehouseOrder {
   picker?: string; // This is the technician's name
   technicianId?: number; // The ID of the technician user
   statusHistory?: Array<{ status: string; timestamp: string; userId?: number; userName?: string; }>; // Log of status changes
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
 }
 
 
@@ -125,6 +139,9 @@ export interface OutboundShipment {
   paymentConfirmationName?: string;
   paymentConfirmationData?: string; // e.g., transaction ID or receipt data
   createdAt?: string;
+  // New warehouse-related fields
+  warehouse_id?: number;
+  warehouse_name?: string;
 }
 
 export interface Vendor {
@@ -138,6 +155,9 @@ export interface Vendor {
   products: string[]; // List of product categories they supply
   averageLeadTime?: number; // in days
   totalSpend?: number; 
+  // New warehouse-related fields
+  preferred_warehouse_id?: number;
+  preferred_warehouse_name?: string;
 }
 
 export interface ChatMessage {
@@ -523,123 +543,9 @@ export interface WarehousePerformance {
 }
 
 // Enhanced InventoryItem with warehouse support
-export interface InventoryItem {
-  id: number;
-  name: string;
-  sku: string;
-  category: string;
-  department?: string; // New: Department field for inventory items
-  quantity: number;
-  location: string;
-  reorderPoint: number;
-  supplierId?: number;
-  lastStocktakeDate?: string;
-  imageUrl?: string; 
-  isSerialized?: boolean;
-  serialNumbers?: string[];
-  costPrice?: number;
-  entryDate?: string;
-  lastMovementDate?: string;
-  // New warehouse-related fields
-  warehouse_id?: number;
-  warehouse_name?: string;
-  zone_code?: string;
-  aisle_code?: string;
-  shelf_code?: string;
-  safety_stock?: number;
-  primary_vendor_id?: number;
-}
 
-// Enhanced WarehouseOrder with warehouse support
-export interface WarehouseOrder {
-  id: number;
-  department: string;
-  items: OrderItem[];
-  status: OrderStatus;
-  priority: 'Low' | 'Medium' | 'High';
-  createdAt: string;
-  picker?: string;
-  technicianId?: number;
-  statusHistory?: Array<{ status: string; timestamp: string; userId?: number; userName?: string; }>;
-  // New warehouse-related fields
-  warehouse_id?: number;
-  warehouse_name?: string;
-}
 
-// Enhanced ASN with warehouse support
-export interface ASN {
-  id: number;
-  poNumber?: string;
-  department?: string;
-  supplier: string;
-  expectedArrival: string;
-  status: 'On Time' | 'Delayed' | 'At the Warehouse' | 'Processing' | 'Discrepancy Review' | 'Complete';
-  itemCount: number;
-  carrier: string;
-  poFileData?: string;
-  poFileName?: string;
-  vendorInvoiceData?: string;
-  vendorInvoiceName?: string;
-  shippingInvoiceData?: string;
-  shippingInvoiceName?: string;
-  billOfLadingData?: string;
-  billOfLadingName?: string;
-  brokerId?: number;
-  brokerName?: string;
-  fees?: ShipmentFees;
-  feeStatus?: FeeStatus;
-  feeStatusHistory?: Array<{ status: string; timestamp: string; userId?: number; fromStatus?: string }>;
-  paymentConfirmationName?: string;
-  paymentConfirmationData?: string;
-  createdAt?: string;
-  completedAt?: string;
-  items?: ASNItem[];
-  // New warehouse-related fields
-  warehouse_id?: number;
-  warehouse_name?: string;
-}
 
-// Enhanced OutboundShipment with warehouse support
-export interface OutboundShipment {
-  id: number;
-  orderId?: number;
-  carrier: 'FedEx' | 'UPS' | 'DHL' | 'Other';
-  trackingNumber: string;
-  destinationAddress: string;
-  status: 'Preparing' | 'In Transit' | 'Delivered' | 'Delayed' | 'Returned';
-  dispatchDate: string;
-  estimatedDeliveryDate: string;
-  shippedSerialNumbers?: Record<number, string[]>; 
-  actualDeliveryDate?: string;
-  brokerId?: number;
-  brokerName?: string;
-  fees?: ShipmentFees;
-  feeStatus?: FeeStatus;
-  feeStatusHistory?: Array<{ status: string; timestamp: string; userId?: number; fromStatus?: string }>;
-  paymentConfirmationName?: string;
-  paymentConfirmationData?: string;
-  createdAt?: string;
-  // New warehouse-related fields
-  warehouse_id?: number;
-  warehouse_name?: string;
-}
-
-// Enhanced Vendor with warehouse support
-export interface Vendor {
-  id: number;
-  name: string;
-  contactPerson: string;
-  email: string;
-  phone: string;
-  performanceScore: number;
-  lastCommunicationDate: string;
-  products: string[];
-  averageLeadTime?: number;
-  totalSpend?: number;
-  // New warehouse-related fields
-  preferred_warehouse_id?: number;
-  preferred_warehouse_name?: string;
-}
 
 // Dashboard types for multi-warehouse
 export interface WarehouseMetric {
