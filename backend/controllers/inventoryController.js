@@ -19,12 +19,28 @@ const getInventoryItems = async (req, res, next) => {
 // @route   POST /api/v1/inventory
 // @access  Private
 const createInventoryItem = async (req, res, next) => {
-  const { name, sku, category, location } = req.body;
+  const { name, department, quantity } = req.body;
   
-  if (!name || !sku || !category || !location ) {
+  // Only require name, department, and quantity
+  if (!name || !department || typeof quantity === 'undefined' || quantity === null) {
     res.status(400);
-    return next(new Error('Name, SKU, category, and location are required for an inventory item'));
+    return next(new Error('Name, Department, and Quantity are required for an inventory item'));
   }
+
+  // Set placeholders for missing fields
+  if (!req.body.sku) req.body.sku = 'not found';
+  if (!req.body.category) req.body.category = null;
+  if (!req.body.location) req.body.location = null;
+  if (!req.body.reorderPoint && req.body.reorderPoint !== 0) req.body.reorderPoint = null;
+  if (!req.body.safetyStock && req.body.safetyStock !== 0) req.body.safetyStock = null;
+  if (!req.body.costPrice && req.body.costPrice !== 0) req.body.costPrice = null;
+  if (!req.body.isSerialized) req.body.isSerialized = false;
+  if (!req.body.serialNumbers) req.body.serialNumbers = null;
+  if (!req.body.entryDate) req.body.entryDate = new Date().toISOString();
+  if (!req.body.lastMovementDate) req.body.lastMovementDate = null;
+  if (!req.body.imageUrl) req.body.imageUrl = null;
+  if (!req.body.primaryVendorId) req.body.primaryVendorId = null;
+  if (!req.body.isAged) req.body.isAged = false;
 
   try {
     const item = await inventoryService.createInventoryItem(req.body); // Pass camelCase body directly
@@ -148,6 +164,30 @@ const getUniqueCategories = async (req, res, next) => {
     }
 };
 
+// @desc    Get all incomplete inventory items
+// @route   GET /api/v1/inventory/incomplete
+// @access  Private
+const getIncompleteInventoryItems = async (req, res, next) => {
+  try {
+    const items = await inventoryService.getIncompleteInventoryItems();
+    res.json(items);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Manually trigger SKU update job for items with missing SKUs
+// @route   POST /api/v1/inventory/update-missing-skus
+// @access  Admin only
+const updateMissingSkus = async (req, res, next) => {
+  try {
+    await inventoryService.updateMissingSkus();
+    res.json({ message: 'SKU update job triggered successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getInventoryItems,
   createInventoryItem,
@@ -156,4 +196,6 @@ module.exports = {
   deleteInventoryItem,
   manageItemSerials,
   getUniqueCategories,
+  getIncompleteInventoryItems,
+  updateMissingSkus,
 };

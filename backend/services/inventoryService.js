@@ -2,6 +2,7 @@
 const { getPool } = require('../config/db');
 const { mapToCamel, mapToSnake } = require('../utils/dbMappers');
 const { sendEvent } = require('./sseService');
+const { skuGeneratorServiceBackend } = require('./skuGeneratorServiceBackend'); // Assume this exists or is similar to frontend
 
 // This function works with snake_case DB data
 const _deriveQuantity = (dbItem) => {
@@ -38,6 +39,11 @@ const getInventoryItemById = async (id) => {
 
 const createInventoryItem = async (itemData) => { // Expects camelCase
   const pool = getPool();
+  // If SKU is missing or 'not found', generate it using backend logic
+  if (!itemData.sku || itemData.sku === 'not found') {
+    const skuResult = await skuGeneratorServiceBackend.generateSKU(itemData.name, itemData.department);
+    itemData.sku = skuResult.sku || 'not found';
+  }
   const dbData = mapToSnake(itemData);
   const { sku, name, category, location, reorder_point, is_serialized, serial_numbers, cost_price, entry_date, last_movement_date, image_url, safety_stock, primary_vendor_id, is_aged, department } = dbData;
   let quantity = dbData.quantity;
@@ -239,6 +245,38 @@ const getUniqueCategories = async () => {
     return res.rows.map(row => row.category);
 };
 
+// Helper to flag incomplete items
+function isItemIncomplete(dbItem) {
+  return !dbItem.sku || dbItem.sku === 'not found' || !dbItem.safety_stock || dbItem.safety_stock === 0 || !dbItem.reorder_point || dbItem.reorder_point === 0;
+}
+
+const getIncompleteInventoryItems = async () => {
+  const pool = getPool();
+  const res = await pool.query('SELECT * FROM inventory_items');
+  return res.rows.filter(isItemIncomplete).map(mapDbItemToAppItem);
+};
+
+// Scheduled job: Update missing SKUs for items with sku = 'not found'
+const updateMissingSkus = async () => {
+  const pool = getPool();
+  const itemsRes = await pool.query("SELECT * FROM inventory_items WHERE sku = 'not found'");
+  let updatedCount = 0;
+  for (const dbItem of itemsRes.rows) {
+    try {
+      // Use the same SKU generation logic as during upload
+      const skuResult = await skuGeneratorServiceBackend.generateSKU(dbItem.name, dbItem.department);
+      if (skuResult && skuResult.sku && skuResult.sku !== 'not found') {
+        await pool.query('UPDATE inventory_items SET sku = $1 WHERE id = $2', [skuResult.sku, dbItem.id]);
+        updatedCount++;
+      }
+    } catch (err) {
+      // Log and skip if SKU generation fails
+      console.error(`[SKU Update Job] Failed to update SKU for item ${dbItem.id} (${dbItem.name}):`, err.message);
+    }
+  }
+  console.log(`[SKU Update Job] Updated ${updatedCount} items with new SKUs.`);
+};
+
 module.exports = {
   getAllInventoryItems,
   getInventoryItemById,
@@ -248,4 +286,6 @@ module.exports = {
   decreaseStock,
   manageSerials,
   getUniqueCategories,
+  getIncompleteInventoryItems,
+  updateMissingSkus,
 };

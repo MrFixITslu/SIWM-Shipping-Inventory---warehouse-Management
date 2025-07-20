@@ -8,7 +8,9 @@ const {
     updateInventoryItem,
     deleteInventoryItem,
     manageItemSerials,
-    getUniqueCategories
+    getUniqueCategories,
+    getIncompleteInventoryItems,
+    updateMissingSkus
 } = require('../controllers/inventoryController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const { ALL_ROLES } = require('../config/roles');
@@ -21,6 +23,12 @@ router.route('/')
 // Specific data routes (e.g., for populating filters)
 router.route('/data/categories')
     .get(protect, authorize(...ALL_ROLES), getUniqueCategories);
+
+router.route('/incomplete')
+    .get(protect, authorize(...ALL_ROLES), getIncompleteInventoryItems);
+
+router.route('/update-missing-skus')
+    .post(protect, authorize('admin'), updateMissingSkus);
 
 router.route('/:id')
     .get(protect, authorize(...ALL_ROLES), getInventoryItemById)

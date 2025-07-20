@@ -25,5 +25,9 @@ export const inventoryService = {
 
   getUniqueCategories: (): Promise<string[]> => {
     return api.get('/inventory/data/categories');
+  },
+
+  getIncompleteInventoryItems: (): Promise<InventoryItem[]> => {
+    return api.get('/inventory/incomplete');
   }
 };

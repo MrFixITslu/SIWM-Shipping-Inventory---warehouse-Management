@@ -18,7 +18,7 @@ export interface ExcelInventoryItem {
 export interface ProcessedInventoryItem extends ExcelInventoryItem {
   sku: string;
   skuSource: string;
-  status: 'success' | 'error' | 'pending';
+  status: 'success' | 'error' | 'pending' | 'warning';
   error?: string;
 }
 
@@ -40,36 +40,18 @@ class SKUGeneratorService {
   };
 
   /**
-   * Generate SKU for a single item
+   * Generate SKU for a single item (frontend: only use hash/timestamp, no internet lookup)
    */
   async generateSKU(itemName: string, department: string): Promise<SKUGenerationResult> {
+    // Only use hash and timestamp methods in the frontend
     try {
-      // Try multiple methods to generate SKU
-      const methods = [
-        () => this.generateFromBarcodeAPI(itemName),
-        () => this.generateFromUPCAPI(itemName),
-        () => this.generateFromHash(itemName, department),
-        () => this.generateFromTimestamp(itemName, department)
-      ];
-
-      for (const method of methods) {
-        try {
-          const result = await method();
-          if (result.sku) {
-            return result;
-          }
-        } catch (error) {
-          console.warn(`SKU generation method failed:`, error);
-          continue;
-        }
+      const hashResult = this.generateFromHash(itemName, department);
+      if (hashResult && hashResult.sku) {
+        return hashResult;
       }
-
-      // Fallback to timestamp-based generation
-      return this.generateFromTimestamp(itemName, department);
-    } catch (error) {
-      console.error('All SKU generation methods failed:', error);
-      return this.generateFromTimestamp(itemName, department);
-    }
+    } catch (e) {}
+    // Fallback to timestamp
+    return this.generateFromTimestamp(itemName, department);
   }
 
   /**
@@ -180,17 +162,17 @@ class SKUGeneratorService {
         const skuResult = await this.generateSKU(item.itemName, item.department);
         processedItems.push({
           ...item,
-          sku: skuResult.sku,
+          sku: skuResult.sku || 'update',
           skuSource: skuResult.source,
           status: 'success'
         });
       } catch (error) {
+        // If SKU generation fails, still add the item as success with sku = 'update'
         processedItems.push({
           ...item,
-          sku: '',
-          skuSource: 'failed',
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          sku: 'update',
+          skuSource: 'not found',
+          status: 'success'
         });
       }
     }

@@ -8,6 +8,8 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const https = require('https');
 const fs = require('fs');
+const cron = require('node-cron');
+const inventoryService = require('./services/inventoryService');
 
 // Load env vars FIRST
 dotenv.config({ path: path.resolve(__dirname, '.env') });
@@ -75,6 +77,17 @@ const startApp = async () => {
     // 2. Initialize Scheduled AI Service
     const scheduledAiService = require('./services/scheduledAiService');
     scheduledAiService.init();
+
+    // Schedule SKU update job every 6 months (1st Jan, 1st July at 2:00am)
+    cron.schedule('0 2 1 1,7 *', async () => {
+      console.log('[SKU Update Job] Running scheduled SKU update for items with missing SKUs...');
+      try {
+        await inventoryService.updateMissingSkus();
+        console.log('[SKU Update Job] Completed SKU update.');
+      } catch (err) {
+        console.error('[SKU Update Job] Error during SKU update:', err);
+      }
+    });
 
     // 2. Initialize Express App after DB is ready
     const app = express();
