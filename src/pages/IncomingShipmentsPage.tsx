@@ -770,7 +770,7 @@ const IncomingShipmentsPage: React.FC = () => {
         <button
           className="flex items-center text-lg font-semibold text-teal-700 dark:text-teal-300 mb-4 focus:outline-none"
           onClick={() => setShowCompletedReport((prev) => !prev)}
-          aria-expanded={showCompletedReport ? 'true' : 'false'}
+          aria-expanded={showCompletedReport}
         >
           {showCompletedReport ? (
             <ChevronDownIcon className="h-5 w-5 mr-2" />

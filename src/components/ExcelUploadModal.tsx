@@ -29,6 +29,7 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
   const [processedItems, setProcessedItems] = useState<ProcessedInventoryItem[]>([]);
   const [currentStep, setCurrentStep] = useState<'upload' | 'processing' | 'review' | 'complete'>('upload');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const downloadLinkRef = useRef<HTMLAnchorElement>(null);
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -113,54 +114,25 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
 
   const handleDownloadTemplate = () => {
     try {
-      // Enhanced template with more comprehensive examples and better formatting
-      const template = `Item Name,Department,Quantity,Category,Location,Reorder Point,Safety Stock
-"Network Cable Cat6","Digicel+",50,"Cables","Warehouse A",10,5
-"Router TP-Link","Digicel Business",25,"Networking","Warehouse B",5,2
-"Antenna 5GHz","Outside Plant (OSP)",30,"Antennas","Warehouse C",8,3
-"Laptop Dell","Commercial",15,"Computers","Warehouse A",3,1
-"Printer HP","Marketing",8,"Printers","Warehouse B",2,1
-"HVAC Filter","Field Force & HVAC",40,"HVAC","Warehouse C",12,6`;
-      
-      // Create blob with proper encoding
-      const blob = new Blob([template], { 
-        type: 'text/csv;charset=utf-8;' 
-      });
-      
-      // Create download link
+      const template = `Item Name,Department,Quantity,Category,Location,Reorder Point,Safety Stock,Unit Cost
+"Network Cable Cat6","Digicel+",50,"Cables","Warehouse A",10,5,2.50
+"Router TP-Link","Digicel Business",25,"Networking","Warehouse B",5,2,45.00
+"Antenna 5GHz","Outside Plant (OSP)",30,"Antennas","Warehouse C",8,3,18.75
+"Laptop Dell","Commercial",15,"Computers","Warehouse A",3,1,650.00
+"Printer HP","Marketing",8,"Printers","Warehouse B",2,1,120.00
+"HVAC Filter","Field Force & HVAC",40,"HVAC","Warehouse C",12,6,7.80`;
+      const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'inventory_template.csv';
-      a.style.display = 'none';
-      
-      // Add to DOM, click, and cleanup
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, 100);
-      
+      if (downloadLinkRef.current) {
+        downloadLinkRef.current.href = url;
+        downloadLinkRef.current.download = 'inventory_template.csv';
+        downloadLinkRef.current.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 200);
+      }
     } catch (error) {
       console.error('Error downloading template:', error);
-      // Fallback: create a simple text download
-      const fallbackTemplate = `Item Name,Department,Quantity
-"Network Cable","Digicel+",10
-"Router","Digicel Business",5
-"Antenna","Outside Plant (OSP)",15`;
-      
-      const blob = new Blob([fallbackTemplate], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'inventory_template.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
     }
   };
 
@@ -187,6 +159,20 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
         </p>
       </div>
 
+      {/* Download Template Button - moved and restyled */}
+      <div className="flex justify-center mb-2">
+        <button
+          type="button"
+          onClick={handleDownloadTemplate}
+          className="inline-flex items-center px-4 py-2 border border-primary-600 text-primary-700 bg-white hover:bg-primary-50 rounded-md shadow-sm transition-colors font-medium text-sm"
+        >
+          <ArrowPathIcon className="h-4 w-4 mr-2" />
+          Download Template
+        </button>
+        {/* Hidden anchor for download */}
+        <a ref={downloadLinkRef} className="hidden" />
+      </div>
+
       <div className="space-y-4">
         <div className="flex justify-center">
           <button
@@ -205,16 +191,6 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
           />
         </div>
 
-        <div className="text-center">
-          <button
-            onClick={handleDownloadTemplate}
-            className="flex items-center justify-center mx-auto text-primary-600 hover:text-primary-700 text-sm"
-          >
-            <ArrowPathIcon className="h-4 w-4 mr-1" />
-            Download Template
-          </button>
-        </div>
-
         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
           <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Required Format:</h4>
           <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
@@ -225,6 +201,7 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
             <li>• <strong>Location:</strong> Storage location (e.g., "Warehouse A", "Warehouse B")</li>
             <li>• <strong>Reorder Point:</strong> Minimum stock level before reordering</li>
             <li>• <strong>Safety Stock:</strong> Extra stock for emergencies</li>
+            <li>• <strong>Unit Cost:</strong> Cost per unit (e.g., 2.50)</li>
           </ul>
           <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
             Note: Only Item Name, Department, and Quantity are required. Other fields are optional.

@@ -200,12 +200,14 @@ const SerialManagementModal: React.FC<SerialManagementModalProps> = ({ isOpen, o
             </button>
           </div>
           <div className="mt-4">
-              <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept=".csv,.pdf" onChange={handleFileSelect} />
+              <label htmlFor="serial-upload" className="sr-only">Upload Serials</label>
+              <input type="file" id="serial-upload" ref={fileInputRef} className="hidden" accept=".csv,.pdf" onChange={handleFileSelect} title="Upload Serials" placeholder="Select CSV or PDF file" />
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className="w-full inline-flex items-center justify-center px-4 py-2 border border-dashed border-secondary-400 dark:border-secondary-600 text-sm font-medium rounded-md text-secondary-700 dark:text-secondary-300 bg-white dark:bg-secondary-700 hover:bg-secondary-50 dark:hover:bg-secondary-600 disabled:opacity-50"
+                title="Upload Serials"
               >
                   <UploadIcon className="h-5 w-5 mr-2" />
                   {isUploading ? 'Processing...' : 'Batch Upload from CSV or PDF'}
@@ -228,7 +230,7 @@ const SerialManagementModal: React.FC<SerialManagementModalProps> = ({ isOpen, o
                     <SerialIcon className="h-4 w-4 mr-2 text-blue-500" />
                     {serial}
                   </span>
-                  <button onClick={() => handleDeleteSerial(serial)} className="text-red-500 hover:text-red-700 p-1 rounded-full">
+                  <button onClick={() => handleDeleteSerial(serial)} className="text-red-500 hover:text-red-700 p-1 rounded-full" title={`Delete serial ${serial}`} aria-label={`Delete serial ${serial}`}>
                     <DeleteIcon className="h-4 w-4" />
                   </button>
                 </div>

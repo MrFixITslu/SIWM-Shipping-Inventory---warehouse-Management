@@ -190,19 +190,19 @@ const PickingModal: React.FC<PickingModalProps> = ({ isOpen, onClose, order, onP
                                             <SerialIcon className="h-4 w-4 mr-1.5 text-blue-500" />
                                             Picked Serial Numbers
                                         </label>
-                                        <button type="button" onClick={() => fileInputRefs.current[index]?.click()} disabled={itemStatuses[item.itemId]?.isLoading} className="text-xs bg-secondary-100 hover:bg-secondary-200 dark:bg-secondary-700 dark:hover:bg-secondary-600 px-2 py-1 rounded-md flex items-center disabled:opacity-50">
+                                        <button type="button" onClick={() => fileInputRefs.current[index]?.click()} disabled={itemStatuses[item.itemId]?.isLoading} className="text-xs bg-secondary-100 hover:bg-secondary-200 dark:bg-secondary-700 dark:hover:bg-secondary-600 px-2 py-1 rounded-md flex items-center disabled:opacity-50" title="Upload Serials">
                                             <UploadIcon className="h-4 w-4 mr-1"/> Upload
                                         </button>
-                                        <input type="file" ref={el => {fileInputRefs.current[index] = el;}} style={{ display: 'none' }} accept=".csv,.pdf" onChange={(e) => handleFileSelect(e, index)} />
+                                        <label htmlFor={`serial-upload-${index}`} className="sr-only">Upload Serials</label>
+                                        <input type="file" id={`serial-upload-${index}`} ref={el => {fileInputRefs.current[index] = el;}} className="hidden" accept=".csv,.pdf" onChange={(e) => handleFileSelect(e, index)} title="Upload Serials" placeholder="Select CSV or PDF file" />
                                     </div>
-                                    <label htmlFor={`serials-${item.itemId}`} className="sr-only">Pick value</label>
                                     <textarea
                                         id={`serials-${item.itemId}`}
                                         rows={2}
                                         value={item.pickedSerialsString}
                                         onChange={(e) => handleItemChange(index, e.target.value)}
                                         className={`block w-full ${TAILWIND_INPUT_CLASSES}`}
-                                        placeholder="Enter value"
+                                        placeholder="Enter serial numbers (one per line)"
                                     />
                                     {item.availableSerials && item.availableSerials.length > 0 && (
                                         <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">

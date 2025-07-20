@@ -7,23 +7,15 @@ import InteractiveTable from '@/components/InteractiveTable';
 import StatsCard from '@/components/StatsCard';
 import Modal from '@/components/Modal'; 
 import ErrorMessage from '@/components/ErrorMessage';
-import { DashboardMetric, StockOutRiskForecastItem, AlertSeverity, WorkflowMetric } from '@/types';
-import { AiIcon, CheckBadgeIcon, WarningIcon, TrendingUpIcon } from '@/constants';
+import { DashboardMetric, WorkflowMetric, AlertSeverity } from '@/types';
+import { AiIcon, CheckBadgeIcon, TrendingUpIcon } from '@/constants';
 import { 
-  CubeIcon, 
-  TruckIcon, 
-  UserGroupIcon, 
-  CurrencyDollarIcon,
-  ExclamationTriangleIcon,
   ClockIcon,
   ChartBarIcon,
   CogIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  ExclamationCircleIcon,
-  ArrowTrendingDownIcon
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
-import { aiInsightService } from '@/services/aiInsightService';
 import { scheduledAiService, InsightsSummary } from '@/services/scheduledAiService';
 import { dashboardService } from '@/services/dashboardService';
 import { alertingService } from '@/services/alertingService';
