@@ -33,6 +33,9 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
   const [progress, setProgress] = useState<number>(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const downloadLinkRef = useRef<HTMLAnchorElement>(null);
+  // 1. Add state for success and backend error messages
+  const [success, setSuccess] = useState<string | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -175,8 +178,11 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
       setProcessedItems([...processed, ...processedInvalid]);
       setCurrentStep('review');
       setProgress(0);
+      setSuccess('Inventory uploaded successfully!');
+      setBackendError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process Excel file');
+      setBackendError(err instanceof Error ? err.message : 'Upload failed.');
+      setSuccess(null);
       setCurrentStep('upload');
       setProgress(0);
     }
@@ -222,6 +228,23 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
       fileInputRef.current.value = '';
     }
     onClose();
+  };
+
+  const handleDownloadErrorReport = () => {
+    const errorRows = processedItems.filter(row => row.status === 'error');
+    const csv = [
+      'Item Name,Department,Quantity,Category,Location,Reorder Point,Safety Stock,SKU,SKU Source,Status,Error',
+      ...errorRows.map(row =>
+        [row.itemName, row.department, row.quantity, row.category, row.location, row.reorderPoint, row.safetyStock, row.sku, row.skuSource, row.status, row.error].map(v => `"${v ?? ''}"`).join(',')
+      )
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_upload_errors.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const renderUploadStep = () => (
@@ -350,8 +373,14 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
                   <td className="px-2 py-1 border">{item.safetyStock ?? ''}</td>
                   <td className="px-2 py-1 border">{item.sku}</td>
                   <td className="px-2 py-1 border">{item.skuSource}</td>
-                  <td className="px-2 py-1 border font-bold">{item.status}</td>
-                  <td className="px-2 py-1 border text-red-600 dark:text-red-400">{item.error}</td>
+                  <td className="px-2 py-1 border font-bold">
+                    {item.status === 'success' && <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs">Success</span>}
+                    {item.status === 'warning' && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs">Warning</span>}
+                    {item.status === 'error' && <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs">Error</span>}
+                  </td>
+                  <td className="px-2 py-1 border text-red-600 dark:text-red-400">
+                    {item.error && <span className="text-red-600">{item.error}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -371,6 +400,14 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
           >
             Upload {processedItems.length} Items
           </button>
+          {processedItems.some(row => row.status === 'error') && (
+            <button
+              onClick={handleDownloadErrorReport}
+              className="bg-red-500 text-white px-3 py-1 rounded ml-2"
+            >
+              Download Error Report
+            </button>
+          )}
         </div>
       </div>
     );
@@ -413,6 +450,16 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
     <Modal isOpen={isOpen} onClose={handleClose} title="Upload Inventory from Excel" size="full">
       <div className="p-6">
         {error && <ErrorMessage message={error} />}
+        {backendError && (
+          <div className="bg-red-100 text-red-700 p-2 rounded mb-2">
+            <strong>Error:</strong> {backendError}
+          </div>
+        )}
+        {success && (
+          <div className="bg-green-100 text-green-700 p-2 rounded mb-2">
+            <strong>Success:</strong> {success}
+          </div>
+        )}
         {renderContent()}
       </div>
     </Modal>

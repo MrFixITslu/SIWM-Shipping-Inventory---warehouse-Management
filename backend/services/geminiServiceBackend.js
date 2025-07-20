@@ -1,6 +1,8 @@
 // backend/services/geminiServiceBackend.js
 const { GoogleGenAI } = require('@google/genai');
 const AI_CONFIG = require('../config/aiConfig');
+const fs = require('fs');
+const path = require('path');
 
 const GEMINI_CHAT_MODEL_BACKEND = AI_CONFIG.gemini.model;
 
@@ -92,6 +94,42 @@ if (process.env.GEMINI_API_KEY) {
     ai = null;
 }
 
+// Cache for documentation content
+let documentationCache = null;
+
+function loadDocumentationFiles() {
+  if (documentationCache) return documentationCache;
+  const docFiles = [
+    path.join(__dirname, '../../USER_GUIDE.md'),
+    path.join(__dirname, '../../README.md'),
+    path.join(__dirname, '../../README_PRODUCTION.md'),
+    path.join(__dirname, '../../README_ENHANCED.md'),
+  ];
+  documentationCache = docFiles.map(filePath => {
+    try {
+      if (fs.existsSync(filePath)) {
+        return fs.readFileSync(filePath, 'utf8');
+      }
+    } catch (e) {
+      console.warn('Could not read documentation file:', filePath, e.message);
+    }
+    return '';
+  }).join('\n\n');
+  return documentationCache;
+}
+
+function getDocumentationContext(userMessage) {
+  // Simple heuristic: if the user asks about how to use, upload, troubleshoot, or any feature, include docs
+  const usageKeywords = [
+    'how do i', 'how to', 'guide', 'manual', 'upload', 'feature', 'troubleshoot', 'error', 'problem', 'step', 'screenshot', 'instruction', 'help', 'usage', 'user guide', 'readme', 'documentation', 'explain', 'walkthrough', 'add', 'edit', 'delete', 'report', 'dashboard', 'notification', 'warehouse', 'login', 'reset', 'permission', 'role', 'inventory', 'template', 'csv', 'excel', 'faq', 'support', 'chatbot'
+  ];
+  const lowerMsg = userMessage.toLowerCase();
+  if (usageKeywords.some(k => lowerMsg.includes(k))) {
+    return loadDocumentationFiles();
+  }
+  return '';
+}
+
 const getChatStream = async (userMessage, history) => {
     if (!ai) {
         throw new Error("AI service not available (backend configuration issue).");
@@ -102,10 +140,17 @@ const getChatStream = async (userMessage, history) => {
         parts: [{ text: msg.text }]
     })) : [];
 
+    // Add documentation context if relevant
+    const docContext = getDocumentationContext(userMessage);
+    let systemInstruction = SYSTEM_INSTRUCTION_CHAT;
+    if (docContext) {
+      systemInstruction += '\n\n---\n\nRelevant documentation:\n' + docContext.substring(0, 6000) + '\n'; // Limit to 6000 chars for prompt size
+    }
+
     const chat = ai.chats.create({
         model: GEMINI_CHAT_MODEL_BACKEND,
         config: {
-            systemInstruction: SYSTEM_INSTRUCTION_CHAT,
+            systemInstruction,
         },
         history: geminiHistory,
     });

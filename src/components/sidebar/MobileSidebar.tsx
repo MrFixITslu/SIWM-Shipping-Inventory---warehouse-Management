@@ -48,10 +48,11 @@ const MobileSidebar: React.FC<MobileSidebarProps> = ({
       >
         <div className="relative flex-shrink-0">
           <item.icon className={commonIconClass} />
-          {item.notificationCount && item.notificationCount > 0 && (
-            <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full align-super relative -top-2">
+          {/* Notification count as superscript in top right corner for warehouse orders */}
+          {typeof item.notificationCount === 'number' && item.path === '/orders' && (
+            <sup className="absolute -top-2 -right-2 text-xs font-bold text-white bg-red-500 rounded-full px-1.5 py-0.5 shadow-md z-10">
               {item.notificationCount}
-            </span>
+            </sup>
           )}
         </div>
         <span className="flex-1 ml-3">{item.name}</span>

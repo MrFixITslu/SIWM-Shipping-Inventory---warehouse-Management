@@ -20,6 +20,8 @@ import { scheduledAiService, InsightsSummary } from '@/services/scheduledAiServi
 import { dashboardService } from '@/services/dashboardService';
 import { alertingService } from '@/services/alertingService';
 import LoadingSpinner from '@/components/icons/LoadingSpinner';
+import { inventoryService } from '@/services/inventoryService';
+import { useInventory } from '@/hooks/useInventory';
 
 // Type definitions for missing interfaces
 interface ItemBelowReorderPoint {
@@ -82,6 +84,9 @@ export const DashboardPage: React.FC = () => {
   const [stockAnalysisError, setStockAnalysisError] = useState<string | null>(null);
   const [showRunRateModal, setShowRunRateModal] = useState(false);
   const [newRunRate, setNewRunRate] = useState<number>(66);
+  const [errorItemCount, setErrorItemCount] = useState<number>(0);
+
+  const { inventory } = useInventory();
 
   const fetchDashboardData = useCallback(async (signal: AbortSignal) => {
     setIsDashboardLoading(true);
@@ -168,6 +173,15 @@ export const DashboardPage: React.FC = () => {
     }
   }, []);
 
+  // Fetch error/incomplete inventory count
+  useEffect(() => {
+    let isMounted = true;
+    inventoryService.getIncompleteInventoryItems()
+      .then(items => { if (isMounted) setErrorItemCount(items.length); })
+      .catch(err => { if (isMounted) setErrorItemCount(0); });
+    return () => { isMounted = false; };
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const signal = controller.signal;
@@ -246,7 +260,18 @@ export const DashboardPage: React.FC = () => {
               handleOrdersClick,     // Pending Orders (index 2)
               handleDispatchClick    // Dispatches Today (index 3)
             ];
-            
+            // If this is the error reporting card, polish its UI
+            if (metric.title.toLowerCase().includes('error') || metric.title.toLowerCase().includes('incomplete')) {
+              metric.value = errorItemCount;
+              metric.icon = ExclamationTriangleIcon;
+              metric.description = 'Inventory Items with Errors: Items missing SKU, reorder point, or safety stock. Click to review and fix.';
+            }
+            // Debug: For Inventory Items card, show both backend and frontend count, and force value to frontend count
+            if (metric.title.toLowerCase().includes('inventory')) {
+              const inStockCount = Array.isArray(inventory) ? inventory.filter(item => item.quantity > 0).length : 0;
+              metric.value = inStockCount;
+              metric.description = `Total in-stock SKUs: ${inStockCount}`;
+            }
             return (
               <DashboardCard 
                 key={metric.title} 
