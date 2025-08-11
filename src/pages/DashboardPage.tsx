@@ -85,6 +85,8 @@ export const DashboardPage: React.FC = () => {
   const [showRunRateModal, setShowRunRateModal] = useState(false);
   const [newRunRate, setNewRunRate] = useState<number>(66);
   const [errorItemCount, setErrorItemCount] = useState<number>(0);
+  const [showBelowReorderModal, setShowBelowReorderModal] = useState(false);
+  const [showAtRiskModal, setShowAtRiskModal] = useState(false);
 
   const { inventory } = useInventory();
 
@@ -178,7 +180,7 @@ export const DashboardPage: React.FC = () => {
     let isMounted = true;
     inventoryService.getIncompleteInventoryItems()
       .then(items => { if (isMounted) setErrorItemCount(items.length); })
-      .catch(err => { if (isMounted) setErrorItemCount(0); });
+      .catch(() => { if (isMounted) setErrorItemCount(0); });
     return () => { isMounted = false; };
   }, []);
 
@@ -408,15 +410,18 @@ export const DashboardPage: React.FC = () => {
     const atRiskColumns = [
       {
         key: 'itemName',
-        header: 'Item',
+        header: 'Item Name',
         render: (item: ItemAtRiskOfStockOut) => (
           <div>
             <div className="text-sm font-medium text-secondary-900 dark:text-secondary-100">{item.itemName}</div>
-            <div className="text-sm text-secondary-500 dark:text-secondary-400">{item.sku}</div>
           </div>
         ),
       },
-      { key: 'currentQuantity', header: 'Current Qty' },
+      {
+        key: 'currentQuantity',
+        header: 'Current Qty',
+        render: (item: ItemAtRiskOfStockOut) => item.currentQuantity || 0
+      },
       {
         key: 'sixMonthDemand',
         header: '6-Month Demand (Range)',
@@ -492,7 +497,7 @@ export const DashboardPage: React.FC = () => {
             title="Items Below Reorder Point"
             icon={ExclamationTriangleIcon}
             emptyMessage="No items are currently below their reorder point."
-            onRowClick={() => navigate('/inventory')}
+            onRowClick={item => { if (item === null) setShowBelowReorderModal(true); }}
             maxRows={5}
           />
 
@@ -502,10 +507,37 @@ export const DashboardPage: React.FC = () => {
             title="Items at Risk of Stock-Out (6 Months)"
             icon={ClockIcon}
             emptyMessage="No items are at risk of stock-out within the next 6 months."
-            onRowClick={() => navigate('/inventory')}
+            onRowClick={item => { if (item === null) setShowAtRiskModal(true); }}
             maxRows={5}
           />
         </div>
+        {/* Modals for View All */}
+        <Modal isOpen={showBelowReorderModal} onClose={() => setShowBelowReorderModal(false)} title="All Items Below Reorder Point" size="2xl">
+          <div className="max-h-[70vh] overflow-y-auto max-w-5xl mx-auto">
+            <InteractiveTable
+              data={itemsBelowReorderPoint}
+              columns={belowReorderColumns}
+              title=""
+              icon={ExclamationTriangleIcon}
+              emptyMessage="No items are currently below their reorder point."
+              onRowClick={undefined}
+              maxRows={undefined}
+            />
+          </div>
+        </Modal>
+        <Modal isOpen={showAtRiskModal} onClose={() => setShowAtRiskModal(false)} title="All Items at Risk of Stock-Out (6 Months)" size="2xl">
+          <div className="max-h-[70vh] overflow-y-auto">
+            <InteractiveTable
+              data={itemsAtRiskOfStockOut}
+              columns={atRiskColumns}
+              title=""
+              icon={ClockIcon}
+              emptyMessage="No items are at risk of stock-out within the next 6 months."
+              onRowClick={undefined}
+              maxRows={undefined}
+            />
+          </div>
+        </Modal>
       </div>
     );
   };

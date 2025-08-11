@@ -26,8 +26,13 @@ export const InventoryProvider: React.FC<{ children: ReactNode }> = ({ children 
     setIsLoading(true);
     setError(null);
     try {
-      const items = await inventoryService.getInventoryItems();
-      setInventory(items);
+      let items = await inventoryService.getInventoryItems();
+      // Remove items without a name
+      const itemsWithName = items.filter(item => item.name && item.name.trim() !== '');
+      const itemsWithoutName = items.filter(item => !item.name || item.name.trim() === '');
+      // Delete items without a name from the backend
+      await Promise.all(itemsWithoutName.map(item => inventoryService.deleteInventoryItem(item.id)));
+      setInventory(itemsWithName);
     } catch (err: any) {
       setError(err.message || "Failed to fetch inventory data.");
     } finally {

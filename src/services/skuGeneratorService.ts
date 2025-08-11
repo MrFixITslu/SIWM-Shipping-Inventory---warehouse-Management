@@ -23,13 +23,6 @@ export interface ProcessedInventoryItem extends ExcelInventoryItem {
 }
 
 class SKUGeneratorService {
-  private readonly API_ENDPOINTS = {
-    // Multiple fallback APIs for SKU generation
-    primary: 'https://api.barcodes4.me/barcode/c39/',
-    secondary: 'https://api.ean-search.org/ean/',
-    fallback: 'https://api.upcitemdb.com/prod/trial/lookup'
-  };
-
   private readonly SKU_PREFIXES = {
     'Digicel+': 'DIG+',
     'Digicel Business': 'DIGB',
@@ -52,49 +45,6 @@ class SKUGeneratorService {
     } catch (e) {}
     // Fallback to timestamp
     return this.generateFromTimestamp(itemName, department);
-  }
-
-  /**
-   * Generate SKU using barcode API
-   */
-  private async generateFromBarcodeAPI(itemName: string): Promise<SKUGenerationResult> {
-    try {
-      const response = await fetch(`${this.API_ENDPOINTS.primary}${encodeURIComponent(itemName)}.png`);
-      if (response.ok) {
-        const barcode = this.extractBarcodeFromResponse(response);
-        return {
-          sku: barcode,
-          source: 'barcode-api',
-          confidence: 0.9
-        };
-      }
-    } catch (error) {
-      console.warn('Barcode API failed:', error);
-    }
-    throw new Error('Barcode API unavailable');
-  }
-
-  /**
-   * Generate SKU using UPC API
-   */
-  private async generateFromUPCAPI(itemName: string): Promise<SKUGenerationResult> {
-    try {
-      const response = await fetch(`${this.API_ENDPOINTS.fallback}?upc=${encodeURIComponent(itemName)}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.items && data.items.length > 0) {
-          const upc = data.items[0].ean || data.items[0].upc;
-          return {
-            sku: upc,
-            source: 'upc-api',
-            confidence: 0.8
-          };
-        }
-      }
-    } catch (error) {
-      console.warn('UPC API failed:', error);
-    }
-    throw new Error('UPC API unavailable');
   }
 
   /**
@@ -139,16 +89,6 @@ class SKUGeneratorService {
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash);
-  }
-
-  /**
-   * Extract barcode from API response
-   */
-  private extractBarcodeFromResponse(_response: Response): string {
-    // This is a simplified implementation
-    // In a real scenario, you'd parse the actual barcode data
-    const timestamp = Date.now().toString().slice(-8);
-    return `BC-${timestamp}`;
   }
 
   /**

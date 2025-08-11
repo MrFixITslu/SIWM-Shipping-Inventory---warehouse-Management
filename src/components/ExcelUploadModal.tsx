@@ -5,14 +5,12 @@ import ErrorMessage from './ErrorMessage';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { 
-  ExcelInventoryItem, 
   ProcessedInventoryItem, 
   skuGeneratorService 
 } from '@/services/skuGeneratorService';
 import { 
   UploadIcon, 
   SuccessIcon, 
-  WarningIcon,
   ArrowPathIcon
 } from '@/constants';
 
@@ -103,7 +101,7 @@ const ExcelUploadModal: React.FC<ExcelUploadModalProps> = ({
       };
       // Map and validate rows
       const mappedRows = rawRows
-        .map((row, idx) => {
+        .map((row) => {
           const norm = normalizeKeys(row);
           // Accept common variants for item name
           const itemName = norm['item name'] || norm['itemname'] || norm['name'] || '';
