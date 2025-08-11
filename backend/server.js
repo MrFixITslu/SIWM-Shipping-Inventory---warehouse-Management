@@ -135,14 +135,23 @@ const startApp = async () => {
           console.log(`[CORS] Allowed: Development mode or ALLOW_PUBLIC_IP=true`);
           return callback(null, true);
         }
-        // Check if origin is in allowed list
-        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-          console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
-          return callback(null, true);
-        }
-        // Log blocked origins for debugging
-        console.log(`[CORS] BLOCKED: Origin not allowed: ${origin}`);
-        return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
+            // In production, be more strict with CORS
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin)) {
+        console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
+        return callback(null, true);
+      }
+      console.log(`[CORS] BLOCKED: Origin not allowed in production: ${origin}`);
+      return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
+    } else {
+      // Development mode is more permissive
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
+        return callback(null, true);
+      }
+      console.log(`[CORS] BLOCKED: Origin not allowed: ${origin}`);
+      return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
+    }
       },
       credentials: true,
       optionsSuccessStatus: 200,
@@ -218,9 +227,12 @@ const startApp = async () => {
     app.use(express.json({ limit: '10mb' })); 
     app.use(express.urlencoded({ extended: true })); 
     
-    // 4. Rate Limiting
+    // 4. Rate Limiting - More strict in production
     const generalLimiter = rateLimit({
-        windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true, legacyHeaders: false,
+        windowMs: 15 * 60 * 1000, 
+        max: process.env.NODE_ENV === 'production' ? 300 : 500, 
+        standardHeaders: true, 
+        legacyHeaders: false,
         message: 'Too many requests from this IP, please try again after 15 minutes',
     });
     const authLimiter = rateLimit({
@@ -265,7 +277,7 @@ const startApp = async () => {
     app.use(errorHandler); 
 
     // 7. Start Server
-    const PORT = process.env.PORT || 3001;
+    const PORT = process.env.PORT || 4000;
 
     // --- Port Sanity Check ---
     if (['5432', '3306', '27017', '1433'].includes(String(PORT))) {

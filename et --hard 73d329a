@@ -1,0 +1,10 @@
+[33m73d329a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Refactor ExcelUploadModal and InventoryContext; add modals for items below reorder point and at risk of stock-out in DashboardPage
+[33m579171b[m v1 ready
+[33m78e77a3[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m database issue
+[33mf39a4a5[m no error run build
+[33mcc2bee5[m improved visuals
+[33mfa8c774[m security improvements
+[33m2bb7723[m add upload feature
+[33m4d39d95[m run build no errors
+[33m153583f[m remote login fixed
+[33me26775a[m google api required

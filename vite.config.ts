@@ -18,19 +18,19 @@ export default defineConfig({
   server: {
     // Use HTTP for development to avoid SSL issues
     https: false,
-    port: 5176,
+    port: 3000,
     host: '0.0.0.0', // Listen on all network interfaces for scalability
-    strictPort: true,
+    strictPort: false, // Allow fallback ports to avoid conflicts
     // Enable HMR with better performance
     hmr: {
-      port: 5176,
+      port: 3001,
       overlay: false, // Disable error overlay for better performance
     },
   },
   preview: {
-    port: 5176,
+    port: 4173,
     host: '0.0.0.0', // Listen on all network interfaces for scalability
-    strictPort: true,
+    strictPort: false, // Allow fallback ports
   },
   build: {
     // Optimize build performance
@@ -44,11 +44,18 @@ export default defineConfig({
           router: ['react-router-dom'],
           charts: ['recharts'],
           forms: ['react-hook-form', '@hookform/resolvers', 'zod'],
+          ui: ['lucide-react', 'react-hot-toast'],
         },
+        // Optimize chunk names for production
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
-    // Enable source maps for debugging
-    sourcemap: true,
+    // Disable source maps in production for security and performance
+    sourcemap: process.env.NODE_ENV !== 'production',
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000,
   },
   // Optimize dependencies
   optimizeDeps: {
