@@ -12,6 +12,9 @@ global.IntersectionObserver = class IntersectionObserver {
   takeRecords() { return []; }
 } as any;
 
+// Mock scrollIntoView for JSDOM
+Element.prototype.scrollIntoView = jest.fn();
+
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   constructor() {}

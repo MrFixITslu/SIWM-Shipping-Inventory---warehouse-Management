@@ -181,7 +181,12 @@ const Chatbot: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-secondary-200 dark:border-secondary-700">
             <h3 className="text-lg font-semibold text-secondary-800 dark:text-secondary-200">VisionBot Assistant</h3>
-            <button onClick={toggleOpen} className="text-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300">
+            <button 
+              onClick={toggleOpen} 
+              className="text-secondary-500 hover:text-secondary-700 dark:hover:text-secondary-300"
+              aria-label="Close Chatbot"
+              title="Close Chatbot"
+            >
               <CloseIcon className="h-5 w-5" />
             </button>
           </div>

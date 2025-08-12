@@ -16,7 +16,7 @@ const mockPool = {
 };
 
 // Import the app after mocking
-const app = require('../server');
+const { app } = require('../server-test');
 
 describe('Authentication Endpoints', () => {
   beforeEach(() => {

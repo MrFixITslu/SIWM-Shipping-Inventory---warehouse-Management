@@ -70,55 +70,98 @@ const logisticsRoutes = require('./routes/logisticsRoutes'); // For advanced log
 const warehouseRoutes = require('./routes/warehouseRoutes'); // For multi-warehouse support
 const supportRoutes = require('./routes/supportRoutes'); // For customer support
 
+// Initialize Express App
+const app = express();
+
+// Disable ETag to prevent 304 Not Modified responses
+app.disable('etag');
+
+// Add no-cache headers to all API responses
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
+// 3. Middleware
+const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
+
+if (process.env.NODE_ENV === 'development' && allowedOrigins.length === 0) {
+  // Allow all localhost variations and common development ports
+  allowedOrigins.push(
+    'http://localhost:5173', 'http://localhost:5176', 'http://localhost:3000', 
+    'http://localhost:8000', 'http://127.0.0.1:5500', 'http://localhost:4173', 
+    'http://localhost:3001', 'http://localhost:4000',
+    // Allow network access for scalability
+    'http://0.0.0.0:5176', 'http://0.0.0.0:5173', 'http://0.0.0.0:4000'
+  );
+}
+
+// Add public IP access support
+if (process.env.ALLOW_PUBLIC_IP === 'true') {
+  // Allow all origins for public access (use with caution in production)
+  allowedOrigins.push('*');
+}
+
+// CORS Configuration  
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Enhanced CORS logging for debugging
+    console.log(`[CORS] Incoming request from origin: ${origin}`);
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log('[CORS] Allowed: No origin (mobile app, curl, etc.)');
+      return callback(null, true);
+    }
+    // Allow all origins in development mode or when public IP access is enabled
+    if (process.env.NODE_ENV === 'development' || process.env.ALLOW_PUBLIC_IP === 'true') {
+      console.log(`[CORS] Allowed: Development mode or ALLOW_PUBLIC_IP=true`);
+      return callback(null, true);
+    }
+    // In production, be more strict with CORS
+    if (process.env.NODE_ENV === 'production') {
+      if (allowedOrigins.includes(origin)) {
+        console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
+        return callback(null, true);
+      }
+      console.log(`[CORS] BLOCKED: Origin not allowed in production: ${origin}`);
+      return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
+    } else {
+      // Development mode is more permissive
+      if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        console.log(`[CORS] Allowed: Origin is in allowedOrigins list`);
+        return callback(null, true);
+      }
+      console.log(`[CORS] BLOCKED: Origin not allowed: ${origin}`);
+      return callback(new Error(`The CORS policy for this site does not allow access from the specified Origin: ${origin}`));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-Forwarded-For', 'X-Real-IP', 'Cache-Control'],
+};
+
+app.use(cors(corsOptions));
+
 const startApp = async () => {
     // 1. Connect to Database first
     await connectDB();
 
-    // 2. Initialize Scheduled AI Service
-    const scheduledAiService = require('./services/scheduledAiService');
-    scheduledAiService.init();
+    // 2. Initialize Scheduled AI Service (only in non-test environment)
+    if (process.env.NODE_ENV !== 'test') {
+      const scheduledAiService = require('./services/scheduledAiService');
+      scheduledAiService.init();
 
-    // Schedule SKU update job every 6 months (1st Jan, 1st July at 2:00am)
-    cron.schedule('0 2 1 1,7 *', async () => {
-      console.log('[SKU Update Job] Running scheduled SKU update for items with missing SKUs...');
-      try {
-        await inventoryService.updateMissingSkus();
-        console.log('[SKU Update Job] Completed SKU update.');
-      } catch (err) {
-        console.error('[SKU Update Job] Error during SKU update:', err);
-      }
-    });
-
-    // 2. Initialize Express App after DB is ready
-    const app = express();
-    
-    // Disable ETag to prevent 304 Not Modified responses
-    app.disable('etag');
-
-    // Add no-cache headers to all API responses
-    app.use((req, res, next) => {
-      res.set('Cache-Control', 'no-store');
-      next();
-    });
-
-    // 3. Middleware
-    const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [];
-
-    if (process.env.NODE_ENV === 'development' && allowedOrigins.length === 0) {
-      // Allow all localhost variations and common development ports
-      allowedOrigins.push(
-        'http://localhost:5173', 'http://localhost:5176', 'http://localhost:3000', 
-        'http://localhost:8000', 'http://127.0.0.1:5500', 'http://localhost:4173', 
-        'http://localhost:3001', 'http://localhost:4000',
-        // Allow network access for scalability
-        'http://0.0.0.0:5176', 'http://0.0.0.0:5173', 'http://0.0.0.0:4000'
-      );
-    }
-    
-    // Add public IP access support
-    if (process.env.ALLOW_PUBLIC_IP === 'true') {
-      // Allow all origins for public access (use with caution in production)
-      allowedOrigins.push('*');
+      // Schedule SKU update job every 6 months (1st Jan, 1st July at 2:00am)
+      cron.schedule('0 2 1 1,7 *', async () => {
+        console.log('[SKU Update Job] Running scheduled SKU update for items with missing SKUs...');
+        try {
+          await inventoryService.updateMissingSkus();
+          console.log('[SKU Update Job] Completed SKU update.');
+        } catch (err) {
+          console.error('[SKU Update Job] Error during SKU update:', err);
+        }
+      });
     }
     
     const corsOptions = {
@@ -277,7 +320,7 @@ const startApp = async () => {
     app.use(errorHandler); 
 
     // 7. Start Server
-    const PORT = process.env.PORT || 4000;
+    const PORT = process.env.PORT || 3000;
 
     // --- Port Sanity Check ---
     if (['5432', '3306', '27017', '1433'].includes(String(PORT))) {
@@ -294,8 +337,13 @@ const startApp = async () => {
     });
 };
 
-// Start the application
-startApp().catch(error => {
-    console.error("Failed to start the application due to a fatal error:", error);
-    process.exit(1);
-});
+// Export the app for testing
+module.exports = { app };
+
+// Start the application only if not in test environment
+if (process.env.NODE_ENV !== 'test') {
+  startApp().catch(error => {
+      console.error("Failed to start the application due to a fatal error:", error);
+      process.exit(1);
+  });
+}

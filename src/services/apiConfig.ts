@@ -5,7 +5,7 @@
  * This is configured via Vite's environment variables.
  * In your project root, create a .env file (e.g., .env.development or .env.production)
  * and set the VITE_API_BASE_URL variable.
- * Example for development: VITE_API_BASE_URL=http://localhost:4000/api/v1
+ * Example for development: VITE_API_BASE_URL=http://localhost:3000/api/v1
  */
 const viteEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
 
@@ -23,12 +23,12 @@ function getApiBaseUrl(): string {
     // If accessing from a remote IP (not localhost), use the same IP for backend
     if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
       console.log(`[API Config] Detected remote access from ${currentHost}, using same host for backend`);
-      return `http://${currentHost}:4000/api/v1`;
+      return `http://${currentHost}:3000/api/v1`;
     }
   }
 
   // Default fallback
-  return 'http://localhost:4000/api/v1';
+  return 'http://localhost:3000/api/v1';
 }
 
 export const BASE_API_URL = getApiBaseUrl();

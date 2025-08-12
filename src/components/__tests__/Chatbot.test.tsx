@@ -49,11 +49,11 @@ describe('Chatbot', () => {
     const toggleButton = screen.getByRole('button', { name: /toggle chatbot/i });
     await user.click(toggleButton);
     
-    // Should show close icon when open
-    expect(screen.getByTestId('close-icon')).toBeInTheDocument();
+    // Should show close icon when open (there are multiple close icons)
+    expect(screen.getAllByTestId('close-icon')).toHaveLength(2);
     
     // Should show input field
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     expect(input).toBeInTheDocument();
   });
 
@@ -82,7 +82,7 @@ describe('Chatbot', () => {
     await user.click(toggleButton);
     
     // Type and send message
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     const sendButton = screen.getByRole('button', { name: /send message/i });
     
     await user.type(input, 'Hello');
@@ -105,7 +105,7 @@ describe('Chatbot', () => {
     const toggleButton = screen.getByRole('button', { name: /toggle chatbot/i });
     await user.click(toggleButton);
     
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     
     // Focus should be on input after opening
     expect(input).toHaveFocus();
@@ -126,7 +126,7 @@ describe('Chatbot', () => {
     await user.click(toggleButton);
     
     // Send message
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     const sendButton = screen.getByRole('button', { name: /send message/i });
     
     await user.type(input, 'Hello');
@@ -151,7 +151,7 @@ describe('Chatbot', () => {
     const toggleButton = screen.getByRole('button', { name: /toggle chatbot/i });
     await user.click(toggleButton);
     
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     const sendButton = screen.getByRole('button', { name: /send message/i });
     
     await user.type(input, 'Test message');
@@ -171,10 +171,11 @@ describe('Chatbot', () => {
     await user.click(toggleButton);
     
     // Check for proper ARIA attributes
-    const input = screen.getByRole('textbox', { name: /message/i });
+    const input = screen.getByRole('textbox', { name: /ask visionbot/i });
     const sendButton = screen.getByRole('button', { name: /send message/i });
     
-    expect(input).toHaveAttribute('aria-label', 'Message');
+    // Input should have proper labeling (it uses a <label> element with htmlFor)
+    expect(input).toBeInTheDocument();
     expect(sendButton).toHaveAttribute('aria-label', 'Send message');
   });
 }); 

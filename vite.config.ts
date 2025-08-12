@@ -18,7 +18,7 @@ export default defineConfig({
   server: {
     // Use HTTP for development to avoid SSL issues
     https: false,
-    port: 3000,
+    port: 5176,
     host: '0.0.0.0', // Listen on all network interfaces for scalability
     strictPort: false, // Allow fallback ports to avoid conflicts
     // Enable HMR with better performance
